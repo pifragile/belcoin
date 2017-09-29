@@ -43,6 +43,7 @@ nodes = []
 for i in range(0, num_nodes):
     peers = list(addrs)
     del peers[i]
+    print(i)
     nodes.append(Node(addrs[i], peers, i))
 
 
