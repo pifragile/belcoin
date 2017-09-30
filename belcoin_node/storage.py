@@ -17,11 +17,11 @@ class Storage(SyncObj):
 
     @replicated
     def set(self, key, value):
-        print(self.addr + ' received ('+key+','+value+') for storage')
+        print('Node ' +str(self.nid) + ' received ('+key+','+value+') for storage')
         self.db.put(bytes(key, 'utf-8'), bytes(value, 'utf-8'))
 
     def get(self, key):
-        print(self.addr + ' received a request for '+key)
+        print('Node ' +str(self.nid)+ ' received a request for '+key)
         val = self.db.get(bytes(key, 'utf-8'))
         if val is None:
             return '###NOT FOUND###'
