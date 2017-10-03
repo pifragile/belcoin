@@ -11,6 +11,8 @@ class Node(object):
     def __init__(self, self_address, partner_addrs, nid):
         self.storage = Storage(self_address, partner_addrs, nid)
         self.nid = nid
+        self.address = self_address
+        self.partner_addrs = partner_addrs
 
     def add_node(self, addr):
         self.storage.addNodeToCluster(addr, callback=cb)
