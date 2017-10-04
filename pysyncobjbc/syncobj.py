@@ -1,3 +1,9 @@
+###belcoin
+from tesseract.transaction import Transaction
+from tesseract.util import b2hex, hex2b
+from tesseract.serialize import SerializationBuffer
+###
+
 import time
 import random
 import os
@@ -57,7 +63,7 @@ class _COMMAND_TYPE:
 _bchr = functools.partial(struct.pack, 'B')
 
 ###belcoin
-BLOCK_TIMEOUT = 10000 #in ticks
+BLOCK_TIMEOUT = 10 #in ticks
 BLOCK_SIZE = 2000 #in transactions
 ###
 
@@ -133,6 +139,7 @@ class SyncObj(object):
         self.__tickctr = 0
         self.bcnode = None
         self.mempool = []
+        self.nid = 0
         ###
 
         self.__consumers = consumers
@@ -263,7 +270,16 @@ class SyncObj(object):
     ###belcoin
     def send_block(self):
         pass
+
+    def broadcast_txn(self,txn):
+        for node in self.__nodes:
+            node.send({
+                'type': 'broadcast_txn',
+                'txn': txn
+            })
     ###
+
+
     def destroy(self):
         """
         Correctly destroy SyncObj. Stop autoTickThread, close connections, etc.
@@ -559,7 +575,9 @@ class SyncObj(object):
 
             ###belcoin
             self.__tickctr += 1
-            if self.tickctr > BLOCK_TIMEOUT or len(self.mempool) > BLOCK_SIZE:
+            if (self.__tickctr > BLOCK_TIMEOUT and len(self.mempool) > 0) or \
+                            len(self.mempool) > BLOCK_SIZE:
+                print('Sending a block to my friends...')
                 self.send_block()
                 self.__tickctr = 0
             ###
@@ -720,6 +738,22 @@ class SyncObj(object):
         return self._idToMethod[funcID](*args, **kwargs)
 
     def _onMessageReceived(self, nodeAddr, message):
+        ###belcoin
+        if message['type'] == 'broadcast_txn':
+            tx = Transaction.unserialize_full(SerializationBuffer(hex2b(message[
+                                                                      'txn'])))
+            print('node {} received txn {} from broadcast'.format(self.nid,
+                                                   b2hex(tx.txid)))
+
+            if len([txn for txn in self.mempool if txn[0] ==
+                    tx.txid]) == 0:
+                self.mempool.append((tx.txid, tx))
+                print('Txn {} put in mempool on node {}.'.format(b2hex(
+                    tx.txid), self.nid))
+            else:
+                print('Txn {} already in mempool on node {}.'.format(
+                    b2hex(tx.txid)))
+        ###
 
         if message['type'] == 'request_vote' and self.__selfNodeAddr is not None:
 

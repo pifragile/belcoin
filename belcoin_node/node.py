@@ -6,10 +6,11 @@ import argparse
 from threading import Thread
 
 
+
 class Node(object):
 
     def __init__(self, self_address, partner_addrs, nid):
-        self.storage = Storage(self_address, partner_addrs, nid)
+        self.storage = Storage(self_address, partner_addrs, nid, self)
         self.nid = nid
         self.address = self_address
         self.partner_addrs = partner_addrs

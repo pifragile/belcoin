@@ -1,5 +1,7 @@
 from twisted.internet import reactor
 from txjsonrpc.web.jsonrpc import Proxy
+from tesseract.transaction import Transaction
+from tesseract.util import b2hex
 import argparse
 
 # parser = argparse.ArgumentParser('Belcoin Client')
@@ -29,6 +31,11 @@ def call_get(port,key):
     d = proxy.callRemote('get', key)
     d.addCallbacks(printValue, printError).addBoth(cont)
 
+def call_txn(port,txn):
+    proxy = Proxy('http://127.0.0.1:' + str(port) + '/')
+    d = proxy.callRemote('puttxn', txn)
+    d.addCallbacks(printValue, printError).addBoth(cont)
+
 def run():
         cmd = input('>>').split()
         if not cmd:
@@ -45,6 +52,13 @@ def run():
             key = cmd[2]
             print('###Requesting '+ key + ' from ' + 'http://127.0.0.1:'+str(port)+'/')
             reactor.callLater(0, call_get, port, key)
+
+        elif cmd[0] == 'txn':
+            port = int(cmd[1])
+            print('###Sending test transaction to ' + 'http://127.0.0.1:'+str(
+                port)+'/')
+            txn = b2hex(Transaction([],[]).serialize_full().get_bytes())
+            reactor.callLater(0, call_txn, port, txn)
 
         else:
             run()

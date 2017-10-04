@@ -13,7 +13,7 @@ class TxnWrapper:
         self.timestamp = ts
 
         if utxos is None:
-            self.utxos = [1 for _ in range(len(self.txn.outputs))]
+            self.utxos = [True for _ in range(len(self.txn.outputs))]
         else:
             self.utxos = utxos
 
