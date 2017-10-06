@@ -2,6 +2,7 @@
 from tesseract.transaction import Transaction
 from tesseract.util import b2hex, hex2b
 from tesseract.serialize import SerializationBuffer
+from belcoin_node.txnwrapper import TxnWrapper
 ###
 
 import time
@@ -63,8 +64,8 @@ class _COMMAND_TYPE:
 _bchr = functools.partial(struct.pack, 'B')
 
 ###belcoin
-BLOCK_TIMEOUT = 10 #in ticks
-BLOCK_SIZE = 2000 #in transactions
+BLOCK_TIMEOUT = 100000 #in ticks
+BLOCK_SIZE = 1 #in transactions
 ###
 
 class SyncObjException(Exception):
@@ -140,6 +141,9 @@ class SyncObj(object):
         self.bcnode = None
         self.mempool = []
         self.nid = 0
+        self.db = None
+        self.processing = False
+        self.current_block = []
         ###
 
         self.__consumers = consumers
@@ -271,12 +275,57 @@ class SyncObj(object):
     def send_block(self):
         pass
 
+    def check_block(self, block):
+        pass
+
     def broadcast_txn(self,txn):
+        '''
+        :param txn: serialized txn in hex
+        :return:
+        '''
         for node in self.__nodes:
             node.send({
                 'type': 'broadcast_txn',
                 'txn': txn
             })
+
+    def send_txn(self, addr, txnid):
+        txn = [txn[1] for txn in self.mempool if txn[0] == txnid]
+        if len(txn) > 0:
+            txn = txn[0]
+        else:
+            txnw = self.db.get(txnid)
+            if txnw is None:
+                txn = None
+            else:
+                txn = TxnWrapper.unserialize(SerializationBuffer(txnw)).txn
+
+        if txn is None:
+            print('Transaction {} not found!'.format(b2hex(txnid)))
+            return
+
+        txn = b2hex(txn.serialize_full().get_bytes())
+        print('Sending transaction {} to {}'.format(b2hex(txnid), addr))
+        for node in self.__nodes:
+            if node.getAddress() == addr:
+                node.send({
+                    'type': 'send_txn',
+                    'txn': txn
+                })
+                break
+
+    def request_txn(self, txnid):
+        addr = self._getLeader()
+        print('requesting transaction {} from leader'.format(b2hex(txnid)))
+        for node in self.__nodes:
+            if node.getAddress() == addr:
+                node.send({
+                    'type': 'request_txn',
+                    'txnid': txnid,
+                    'addr' : self._getSelfNodeAddr()
+                })
+                break
+
     ###
 
 
@@ -575,11 +624,13 @@ class SyncObj(object):
 
             ###belcoin
             self.__tickctr += 1
-            if (self.__tickctr > BLOCK_TIMEOUT and len(self.mempool) > 0) or \
-                            len(self.mempool) > BLOCK_SIZE:
-                print('Sending a block to my friends...')
-                self.send_block()
-                self.__tickctr = 0
+            if (self.__tickctr >= BLOCK_TIMEOUT and len(self.mempool) > 0) or \
+                            len(self.mempool) >= BLOCK_SIZE:
+
+                if not self.processing:
+                    print('Sending a block to my friends...')
+                    self.send_block()
+                    self.__tickctr = 0
             ###
 
             while self.__raftCommitIndex < self.__getCurrentLogIndex():
@@ -739,10 +790,10 @@ class SyncObj(object):
 
     def _onMessageReceived(self, nodeAddr, message):
         ###belcoin
-        if message['type'] == 'broadcast_txn':
+        if message['type'] == 'broadcast_txn' or message['type'] == 'send_txn':
             tx = Transaction.unserialize_full(SerializationBuffer(hex2b(message[
                                                                       'txn'])))
-            print('node {} received txn {} from broadcast'.format(self.nid,
+            print('node {} received txn {}'.format(self.nid,
                                                    b2hex(tx.txid)))
 
             if len([txn for txn in self.mempool if txn[0] ==
@@ -752,7 +803,18 @@ class SyncObj(object):
                     tx.txid), self.nid))
             else:
                 print('Txn {} already in mempool on node {}.'.format(
-                    b2hex(tx.txid)))
+                    b2hex(tx.txid),self.nid))
+
+            if message['type'] == 'send_txn':
+                self.check_block(self.current_block)
+
+        if message['type'] == 'request_txn':
+            node_addr = message['addr']
+            txnid = message['txnid']
+            print('Node {} requested transaction {}'.format(node_addr,
+                                                            b2hex(txnid)))
+            self.send_txn(node_addr, txnid)
+
         ###
 
         if message['type'] == 'request_vote' and self.__selfNodeAddr is not None:

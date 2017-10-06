@@ -1,7 +1,6 @@
 from pysyncobjbc import SyncObj, SyncObjConf, replicated
 import plyvel
 from os.path import join, expanduser
-from tesseract.transaction import Transaction,Input,Output
 from tesseract.serialize import SerializationBuffer
 import time
 from tesseract.util import b2hex
@@ -9,6 +8,7 @@ from tesseract.exceptions import InvalidTransactionError
 from tesseract.crypto import verify_sig, NO_HASH
 from pysyncobjbc.syncobj import BLOCK_SIZE
 from belcoin_node.txnwrapper import TxnWrapper
+from threading import Thread
 
 class Storage(SyncObj):
     def __init__(self, self_addr, partner_addrs, nid, node):
@@ -49,16 +49,35 @@ class Storage(SyncObj):
     def send_block(self):
         txns = self.mempool[:BLOCK_SIZE]
         block = [item[0] for item in txns]
-        self.process_block(block)
+        self.processing = True
+        self.start(block)
 
     @replicated
+    def start(self,block):
+        self.check_block(block)
+
+    def check_block(self, block):
+        self.processing = True
+        self.current_block = block
+        wait = False
+        for txid in block:
+            tx = [txn for txn in self.mempool if txn[0] == txid]
+            if len(tx) == 0:
+                wait = True
+                self.request_txn(txid)
+                time.sleep(0.5)
+        if not wait:
+            self.process_block(block)
+
+
     def process_block(self, block):
+
         for txid in block:
             tx = [txn[1] for txn in self.mempool if txn[0] == txid]
+
             if len(tx) == 0:
                 raise InvalidTransactionError(
-                    "txn not found on Node {}".format(self.nid))
-                #TODO request transaction from other nodes
+                    "VERY STRANGE ERROR".format(self.nid))
             if len(tx) > 1:
                 raise InvalidTransactionError(
                     "COLLISION OOOHHH MYYYY GOOOOD".format(self.nid))
@@ -114,6 +133,7 @@ class Storage(SyncObj):
             self[txn.txid] = TxnWrapper(txn, ts)
             print('txn {} ACCEPTED'.format(b2hex(txid)))
             self.mempool = [txn for txn in self.mempool if txn[0] != txid]
+            self.processing = False
 
 
 

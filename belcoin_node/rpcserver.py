@@ -29,3 +29,4 @@ class RPCServer(jsonrpc.JSONRPC):
                 tx.txid), self.node.nid))
         print('broadcasting transaction {}...'.format(b2hex(tx.txid)))
         self.node.storage.broadcast_txn(b2hex(t))
+
