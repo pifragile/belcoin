@@ -1,4 +1,4 @@
-from txjsonrpc.netstring import jsonrpc
+from txjsonrpc.web import jsonrpc
 from tesseract.util import b2hex
 from tesseract.transaction import Transaction
 from tesseract.serialize import SerializationBuffer
@@ -45,7 +45,6 @@ class RPCServer(jsonrpc.JSONRPC):
 
     def jsonrpc_req_txn(self,txnid,addr):
         print('Received Request for block {} from {}'.format(txnid,addr))
-        print('Sending...')
         txn = [txn[1] for txn in self.node.storage.mempool if txn[0] == txnid]
         if len(txn) > 0:
             txn = txn[0]

@@ -1,5 +1,5 @@
 from twisted.internet import reactor
-from txjsonrpc.netstring.jsonrpc import Proxy
+from txjsonrpc.web.jsonrpc import Proxy
 from tesseract.transaction import Transaction
 from tesseract.util import b2hex
 import argparse
@@ -22,20 +22,20 @@ def cont(data):
     run()
 
 def call_set(port,key,value):
-    #proxy = Proxy('http://127.0.0.1:' + str(port) + '/')
-    proxy = Proxy('127.0.0.1', port)
+    proxy = Proxy('http://127.0.0.1:'+str(port)+'/')
+    #proxy = Proxy('127.0.0.1', port)
     d = proxy.callRemote('set', key, value)
     d.addCallback(printValue).addErrback(printError).addBoth(cont)
 
 def call_get(port,key):
-    #proxy = Proxy('http://127.0.0.1:' + str(port) + '/')
-    proxy = Proxy('127.0.0.1', port)
+    proxy = Proxy('http://127.0.0.1:' + str(port) + '/')
+    #proxy = Proxy('127.0.0.1', port)
     d = proxy.callRemote('get', key)
     d.addCallbacks(printValue, printError).addBoth(cont)
 
 def call_txn(port,txn):
-    #proxy = Proxy('http://127.0.0.1:' + str(port) + '/')
-    proxy = Proxy('127.0.0.1', port)
+    proxy = Proxy('http://127.0.0.1:' + str(port) + '/')
+    #proxy = Proxy('127.0.0.1', port)
     d = proxy.callRemote('puttxn', txn, True)
     d.addCallbacks(printValue, printError).addBoth(cont)
 
