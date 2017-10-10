@@ -2,6 +2,10 @@ from twisted.internet import reactor
 from txjsonrpc.web.jsonrpc import Proxy
 from tesseract.transaction import Transaction
 from tesseract.util import b2hex
+from test import createtxns
+from belcoin_node.config import BASE_PORT_RPC
+from random import randint
+import time
 import argparse
 
 # parser = argparse.ArgumentParser('Belcoin Client')
@@ -9,33 +13,36 @@ import argparse
 #                     help='port to send to on localhost')
 # args = parser.parse_args()
 # port = args.port
-
+k = 0
+test_transactions = createtxns.generate_txns()
 
 
 def printValue(value):
-    print ("Result: %s" % str(value))
+     print("Result: %s" % str(value))
+
 
 def printError(error):
     print ('error', error)
 
 def cont(data):
-    run()
+    time.sleep(5)
+    main()
 
 def call_set(port,key,value):
     proxy = Proxy('http://127.0.0.1:'+str(port)+'/')
-    #proxy = Proxy('127.0.0.1', port)
     d = proxy.callRemote('set', key, value)
     d.addCallback(printValue).addErrback(printError).addBoth(cont)
 
 def call_get(port,key):
     proxy = Proxy('http://127.0.0.1:' + str(port) + '/')
-    #proxy = Proxy('127.0.0.1', port)
     d = proxy.callRemote('get', key)
     d.addCallbacks(printValue, printError).addBoth(cont)
 
 def call_txn(port,txn):
     proxy = Proxy('http://127.0.0.1:' + str(port) + '/')
-    #proxy = Proxy('127.0.0.1', port)
+    print('###Sending test transaction to ' + '127.0.0.1:' + str(
+        port) + '/')
+
     d = proxy.callRemote('puttxn', txn, True)
     d.addCallbacks(printValue, printError).addBoth(cont)
 
@@ -63,11 +70,32 @@ def run():
             txn = b2hex(Transaction([],[]).serialize_full().get_bytes())
             reactor.callLater(0, call_txn, port, txn)
 
+        elif cmd[0] == 'txns':
+            txns = createtxns.generate_txns()
+            txn = Transaction([], [])
+            # for i in range(4):
+            #     reactor.callLater(0, call_txn, BASE_PORT_RPC + i,
+            #                       b2hex(txn.serialize_full().get_bytes()))
+            #     #call_txn(BASE_PORT_RPC + i, b2hex(txn.serialize_full(
+            #
+            #     #).get_bytes()))
+            #     time.sleep(0.5)
         else:
             run()
+
+def main():
+    global k
+    if k < len(test_transactions):
+        txn = test_transactions[k]
+        reactor.callLater(0, call_txn, BASE_PORT_RPC + randint(0, 3),
+                          b2hex(txn.serialize_full().get_bytes()))
+        k +=1
+    else:
+        reactor.stop()
+        exit()
 
 print('This is the client! Usage:')
 print('>> set port key value')
 print('>> get port key')
-reactor.callWhenRunning(run)
+reactor.callWhenRunning(main)
 reactor.run()

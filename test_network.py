@@ -4,10 +4,7 @@ from os.path import expanduser
 import errno
 import argparse
 import shutil
-
-
-BASE_PORT = 27870
-BASE_PORT_RPC = 7080
+from belcoin_node.config import BASE_PORT_RPC,BASE_PORT
 
 parser = argparse.ArgumentParser('Belcoin Node Tester')
 parser.add_argument('num_nodes', type=int,

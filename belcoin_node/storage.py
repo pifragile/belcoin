@@ -6,11 +6,14 @@ import time
 from tesseract.transaction import Transaction
 from tesseract.util import b2hex,hex2b
 from tesseract.exceptions import InvalidTransactionError
-from tesseract.crypto import verify_sig, NO_HASH
+from tesseract.crypto import verify_sig, NO_HASH, merkle_root
 from pysyncobjbc.syncobj import BLOCK_SIZE
 from belcoin_node.txnwrapper import TxnWrapper
 from twisted.internet import reactor
 from txjsonrpc.web.jsonrpc import Proxy
+import requests
+import json
+from test import createtxns
 
 class Storage(SyncObj):
     def __init__(self, self_addr, partner_addrs, nid, node):
@@ -19,17 +22,15 @@ class Storage(SyncObj):
         self.addr = self_addr
         self.nid = nid
         self.bcnode = node
-        self.num_missing_txns = 0
-        self.num_received_txns = 0
-
-
         self.db = plyvel.DB(join(expanduser('~/.belcoin'), 'db_'+str(nid)),
                             create_if_missing=True)
+        self[createtxns.genesis_txn().txid] = TxnWrapper(
+            createtxns.genesis_txn(), 0)
 
-    @replicated
-    def set(self, key, value):
-        print('Node ' +str(self.nid) + ' received ('+key+','+value+') for storage')
-        self.db.put(bytes(key, 'utf-8'), bytes(value, 'utf-8'))
+    # @replicated
+    # def set(self, key, value):
+    #     print('Node ' +str(self.nid) + ' received ('+key+','+value+') for storage')
+    #     self.db.put(bytes(key, 'utf-8'), bytes(value, 'utf-8'))
 
     # def get(self, key):
     #     print('Node ' +str(self.nid)+ ' received a request for '+key)
@@ -54,7 +55,7 @@ class Storage(SyncObj):
             reactor.callWhenRunning(self.broadcast_txn, txn)
             reactor.run()
         else:
-            for addr in list(self.bcnode.rpc_peers.values())[:2]:
+            for addr in list(self.bcnode.rpc_peers.values()):#[:2]:
                 reactor.callLater(0, self.send_txn, addr, txn)
 
     def send_block(self):
@@ -65,7 +66,7 @@ class Storage(SyncObj):
 
     @replicated
     def find_missing_transactions(self, block):
-        print('DBG1')
+        print('received block {}'.format(b2hex(merkle_root(block))))
         self.current_block = block
         missing_txns = []
         for txid in block:
@@ -73,18 +74,31 @@ class Storage(SyncObj):
             if len(tx) == 0:
                 missing_txns.append(txid)
         if len(missing_txns) > 0:
-            if not reactor.running:
-                reactor.callWhenRunning(self.request_missing_transactions,
-                                        missing_txns)
-                reactor.run()
-            else:
-                print('DBG2')
                 self.request_missing_transactions(missing_txns)
         else:
             self.process_block(block)
 
-    def transaction_received(self, value):
-        tx = Transaction.unserialize_full(SerializationBuffer(hex2b(value)))
+    def request_missing_transactions(self, missing_txns):
+        for txn in missing_txns:
+            self.request_missing_transaction(txn)
+        self.process_block(self.current_block)
+
+    def request_missing_transaction(self, txnid):
+        # TODO retry if leader is down
+        print('requesting transaction {} from leader'.format(b2hex(txnid)))
+        addr = self.bcnode.rpc_peers[self._getLeader()]
+
+        payload = {
+            "method": "req_txn",
+            "params": [b2hex(txnid), self.addr],
+            "jsonrpc": "2.0",
+            "id": 0,
+        }
+        headers = {'content-type': 'application/json'}
+        response = requests.post(
+            addr, data=json.dumps(payload), headers=headers).json()
+
+        tx = Transaction.unserialize_full(SerializationBuffer(hex2b(response['result'])))
         print('node {} received txn {}'.format(self.nid,
                                                b2hex(tx.txid)))
 
@@ -97,30 +111,6 @@ class Storage(SyncObj):
             print('Txn {} already in mempool on node {}.'.format(
                 b2hex(tx.txid), self.nid))
 
-        self.num_received_txns += 1
-        if self.num_received_txns == self.num_received_txns:
-            self.process_block(self.current_block)
-
-    def transaction_receive_error(self, error):
-        pass
-        # TODO re request txn on failure
-
-    def request_missing_transactions(self, missing_txns):
-        for txn in missing_txns:
-            print('DBG3')
-            #reactor.callLater(0, self.request_missing_transaction, txn)
-            self.request_missing_transaction(txn)
-
-    def request_missing_transaction(self, txnid):
-        print('requesting transaction {} from leader'.format(b2hex(txnid)))
-        addr = self.bcnode.rpc_peers[self._getLeader()]
-        # proxy = Proxy(addr)
-        # d = proxy.callRemote('req_txn', b2hex(txnid), self.addr)
-        # d.addCallbacks(self.transaction_received,
-        #                self.transaction_receive_error)
-        #should be blocking
-
-        # TODO make the call blocking, call transaction_received on result
 
     def transaction_sent(self, value):
         pass #value = 1 if txn was written, 0 if it already existed
@@ -130,7 +120,6 @@ class Storage(SyncObj):
         print(error)
 
     def send_txn(self, addr, txn):
-        print('Sending txn to {}'.format(addr))
         proxy = Proxy(addr)
         d = proxy.callRemote('puttxn', txn, False)
         d.addCallbacks(self.transaction_sent,
@@ -149,10 +138,16 @@ class Storage(SyncObj):
                     "COLLISION OOOHHH MYYYY GOOOOD".format(self.nid))
             txn = tx[0]
             addr = self.addr
+
             ########################
             # verify and write txn #
             ########################
             ts = int(time.time() * 1000000000)
+            if txid in self:
+                print('Trasaction {} is already stored'.format(b2hex(txid)))
+                self.remove_txn_from_mempool_and_return(txid)
+                return
+
             for inp in txn.inputs:
                 if inp.txid == NO_HASH:  # skip dummy inputs
                     continue
@@ -163,9 +158,10 @@ class Storage(SyncObj):
                     if addr == self.addr:
                         print("Invalid input on transaction %s!" % b2hex(
                             txn.txid))
-
-                    raise InvalidTransactionError(
-                        "Invalid input on transaction %s!" % b2hex(txn.txid))
+                        self.remove_txn_from_mempool_and_return(txid)
+                        # raise InvalidTransactionError(
+                        #     "Invalid input on transaction %s!" % b2hex(txn.txid))
+                        return
 
                 # verify signatures
                 if (not verify_sig(txn.txid, spent_output.pubkey,
@@ -175,19 +171,22 @@ class Storage(SyncObj):
                     if addr == self.addr:
                         print("Invalid signatures on transaction %s!" % b2hex(
                             txn.txid))
-
-                    raise InvalidTransactionError(
-                        "Invalid signatures on transaction %s!" % b2hex(
-                            txn.txid))
+                        self.remove_txn_from_mempool_and_return(txid)
+                        return
+                    # raise InvalidTransactionError(
+                    #     "Invalid signatures on transaction %s!" % b2hex(
+                    #         txn.txid))
 
                 # check if outputs are unspent
                 if not output_txnw.utxos[inp.index]:
                     if addr == self.addr:
                         print( "Transactions %s uses spent outputs!" % b2hex(
                             txn.txid))
-                    raise InvalidTransactionError(
-                        "Transactions %s uses spent outputs!" % b2hex(
-                            txn.txid))
+                        self.remove_txn_from_mempool_and_return(txid)
+                        return
+                    # raise InvalidTransactionError(
+                    #     "Transactions %s uses spent outputs!" % b2hex(
+                    #         txn.txid))
 
             # set all outputs to spent
             for inp in txn.inputs:
@@ -198,12 +197,15 @@ class Storage(SyncObj):
             # write txn to db
             self[txn.txid] = TxnWrapper(txn, ts)
             print('txn {} ACCEPTED\n'.format(b2hex(txid)))
-            self.mempool = [txn for txn in self.mempool if txn[0] != txid]
-            self.processing = False
+            self.remove_txn_from_mempool_and_return(txid)
 
 
 
 
+    def remove_txn_from_mempool_and_return(self, txid):
+        self.mempool = [txn for txn in self.mempool if txn[0] != txid]
+        self.processing = False
+        print('\n')
 
 
     def __getitem__(self, key):

@@ -25,16 +25,24 @@ class RPCServer(jsonrpc.JSONRPC):
         '''
         t = hex2b(tx)
         tx = Transaction.unserialize_full(SerializationBuffer(t))
+        if broadcast:
+            print('Txn {} received.'.format(b2hex(
+                tx.txid)))
+        else:
+            print('Txn {} received from broadcast.'.format(b2hex(
+                tx.txid)))
+
+
 
         if len([txn for txn in self.node.storage.mempool if txn[0] ==
                 tx.txid]) == 0:
             self.node.storage.mempool.append((tx.txid, tx))
-            print('Txn {} put in mempool on node {}.'.format(b2hex(
-                tx.txid), self.node.nid))
+            print('Txn {} put in mempool.'.format(b2hex(
+                tx.txid)))
             rval = 1;
         else:
-            print('Txn {} already in mempool on node {}.'.format(b2hex(
-                tx.txid), self.node.nid))
+            print('Txn {} already in mempool.'.format(b2hex(
+                tx.txid)))
             rval = 0;
 
         if broadcast:
