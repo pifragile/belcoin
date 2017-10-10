@@ -3,12 +3,14 @@ import plyvel
 from os.path import join, expanduser
 from tesseract.serialize import SerializationBuffer
 import time
-from tesseract.util import b2hex
+from tesseract.transaction import Transaction
+from tesseract.util import b2hex,hex2b
 from tesseract.exceptions import InvalidTransactionError
 from tesseract.crypto import verify_sig, NO_HASH
 from pysyncobjbc.syncobj import BLOCK_SIZE
 from belcoin_node.txnwrapper import TxnWrapper
-from threading import Thread
+from twisted.internet import reactor
+from txjsonrpc.web.jsonrpc import Proxy
 
 class Storage(SyncObj):
     def __init__(self, self_addr, partner_addrs, nid, node):
@@ -17,6 +19,8 @@ class Storage(SyncObj):
         self.addr = self_addr
         self.nid = nid
         self.bcnode = node
+        self.num_missing_txns = 0
+        self.num_received_txns = 0
 
 
         self.db = plyvel.DB(join(expanduser('~/.belcoin'), 'db_'+str(nid)),
@@ -50,16 +54,18 @@ class Storage(SyncObj):
         txns = self.mempool[:BLOCK_SIZE]
         block = [item[0] for item in txns]
         self.processing = True
-        self.start(block)
+        self.find_missing_transactions(block)
 
     @replicated
-    def start(self,block):
+    def start(self, block):
         self.check_block(block)
+        # TODO wait until process_block returns.. notify???
 
     def check_block(self, block):
         self.processing = True
-        self.current_block = block
+        self.current_block = list(block)
         wait = False
+        # TODO optimize: only the txns that were not found need to be checked
         for txid in block:
             tx = [txn for txn in self.mempool if txn[0] == txid]
             if len(tx) == 0:
@@ -68,6 +74,64 @@ class Storage(SyncObj):
                 time.sleep(0.5)
         if not wait:
             self.process_block(block)
+
+
+    @replicated
+    def find_missing_transactions(self,block):
+        self.current_block = block
+        missing_txns = []
+        for txid in block:
+            tx = [txn for txn in self.mempool if txn[0] == txid]
+            if len(tx) == 0:
+                missing_txns.append(txid)
+        if len(missing_txns) > 0:
+            if not reactor.running:
+                reactor.callWhenRunning(self.request_missing_transactions,
+                                        missing_txns)
+                reactor.run()
+            else:
+                self.request_missing_transactions(missing_txns)
+        else:
+            self.process_block(block)
+
+    def transaction_received(self, value):
+        tx = Transaction.unserialize_full(SerializationBuffer(hex2b(value)))
+        print('node {} received txn {}'.format(self.nid,
+                                               b2hex(tx.txid)))
+
+        if len([txn for txn in self.mempool if txn[0] ==
+                tx.txid]) == 0:
+            self.mempool.append((tx.txid, tx))
+            print('Txn {} put in mempool on node {}.'.format(b2hex(
+                tx.txid), self.nid))
+        else:
+            print('Txn {} already in mempool on node {}.'.format(
+                b2hex(tx.txid), self.nid))
+
+        self.num_received_txns += 1
+        if self.num_received_txns == self.num_received_txns:
+            self.process_block(self.current_block)
+
+    def transaction_error(self, error):
+        pass
+        # TODO re request txn on failure
+
+    def request_missing_transactions(self, missing_txns):
+        for txn in missing_txns:
+            reactor.callLater(0, self.request_missing_transaction,txn)
+
+    def request_missing_transaction(self, txnid):
+        print('requesting transaction {} from leader'.format(b2hex(txnid)))
+        proxy = Proxy(self.bcnode.rpc_peers[self._getLeader()])
+        d = proxy.callRemote('req_txn', b2hex(txnid), self.addr)
+        d.addCallbacks(self.transaction_received,
+                       self.transaction_error)
+
+
+
+
+
+
 
 
     def process_block(self, block):
@@ -131,7 +195,7 @@ class Storage(SyncObj):
 
             # write txn to db
             self[txn.txid] = TxnWrapper(txn, ts)
-            print('txn {} ACCEPTED'.format(b2hex(txid)))
+            print('txn {} ACCEPTED\n'.format(b2hex(txid)))
             self.mempool = [txn for txn in self.mempool if txn[0] != txid]
             self.processing = False
 

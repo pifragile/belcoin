@@ -32,18 +32,25 @@ except OSError as exc:
 
 # create array with all adresses for the nodes
 addrs = []
+addrs_rpc = []
 for i in range(0, num_nodes):
     addrs.append('localhost:' + str(BASE_PORT + i))
+    addrs_rpc.append('http://127.0.0.1:' + str(BASE_PORT_RPC + i))
 
-# create a list of all node objects
+# create a list of all node object
 for i in range(0, num_nodes):
     peers = list(addrs)
+    peers_rpc = list(addrs_rpc)
     del peers[i]
-    peers_str = str(peers).replace(' ', '').replace('[','').replace(']',
-                                                                    '').replace('\'','')
+    del peers_rpc[i]
+
+    peers_str = ",".join(peers)
+    peers_rpc_str = ",".join(peers_rpc)
     print(peers_str)
-    command = 'python belcoin_node/node.py {} {} {} {}'.format(i,
+    command = 'python belcoin_node/node.py {} {} {} {} {}'.format(i,
                                                             BASE_PORT_RPC+i,
+                                                            peers_rpc_str,
                                                             addrs[i],
                                                             peers_str)
+    print(command)
     os.system("gnome-terminal -e 'bash -l -c \""+command+"; exec bash\"'")

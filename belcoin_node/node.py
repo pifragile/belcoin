@@ -9,11 +9,12 @@ from threading import Thread
 
 class Node(object):
 
-    def __init__(self, self_address, partner_addrs, nid):
+    def __init__(self, self_address, partner_addrs, nid, peers_rpc):
         self.storage = Storage(self_address, partner_addrs, nid, self)
         self.nid = nid
         self.address = self_address
         self.partner_addrs = partner_addrs
+        self.rpc_peers = dict(zip(partner_addrs, peers_rpc))#raft addr=>rpc addr
 
     def add_node(self, addr):
         self.storage.addNodeToCluster(addr, callback=cb)
@@ -23,6 +24,8 @@ def main():
     parser.add_argument('id', type=int, help='Node ID')
     parser.add_argument('rpc_port', type=int,
                         help='Port where RPC Server should listen')
+    parser.add_argument('rpc_peers',
+                        help='Ports of the other nodes rpc ifaces')
     parser.add_argument('addr', help='Address for RAFT')
     parser.add_argument('peers', help='Address for RAFT')
 
@@ -31,7 +34,7 @@ def main():
     rpc_port = args.rpc_port
     addr = args.addr
 
-    n = Node(addr, args.peers.split(','), nid)
+    n = Node(addr, args.peers.split(','), nid, args.rpc_peers.split(','))
     reactor.listenTCP(rpc_port, server.Site(RPCServer(n)))
     t = Thread(target=console,args=(n,nid,rpc_port,addr,))
     t.start()
