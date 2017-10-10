@@ -10,7 +10,7 @@ from tesseract.crypto import verify_sig, NO_HASH
 from pysyncobjbc.syncobj import BLOCK_SIZE
 from belcoin_node.txnwrapper import TxnWrapper
 from twisted.internet import reactor
-from txjsonrpc.web.jsonrpc import Proxy
+from txjsonrpc.netstring.jsonrpc import Proxy
 
 class Storage(SyncObj):
     def __init__(self, self_addr, partner_addrs, nid, node):
@@ -49,6 +49,13 @@ class Storage(SyncObj):
 
         return TxnWrapper.unserialize(SerializationBuffer(val))
 
+    def broadcast_txn(self, txn):
+        if not reactor.running:
+            reactor.callWhenRunning(self.broadcast_txn, txn)
+            reactor.run()
+        else:
+            for addr in list(self.bcnode.rpc_peers.values()):
+                reactor.callLater(0, self.send_txn,addr,txn)
 
     def send_block(self):
         txns = self.mempool[:BLOCK_SIZE]
@@ -112,7 +119,7 @@ class Storage(SyncObj):
         if self.num_received_txns == self.num_received_txns:
             self.process_block(self.current_block)
 
-    def transaction_error(self, error):
+    def transaction_receive_error(self, error):
         pass
         # TODO re request txn on failure
 
@@ -125,14 +132,22 @@ class Storage(SyncObj):
         proxy = Proxy(self.bcnode.rpc_peers[self._getLeader()])
         d = proxy.callRemote('req_txn', b2hex(txnid), self.addr)
         d.addCallbacks(self.transaction_received,
-                       self.transaction_error)
+                       self.transaction_receive_error)
 
+    def transaction_sent(self, value):
+        pass #value = 1 if txn was written, 0 if it already existed
 
+    def transaction_send_error(self,error):
+        # TODO maybe resend txn
+        print(error)
 
-
-
-
-
+    def send_txn(self, addr, txn):
+        print('Sending txn to {}'.format(addr))
+        addr = addr.split(':')
+        proxy = Proxy(addr[0], int(addr[1]))
+        d = proxy.callRemote('puttxn', txn, False)
+        d.addCallbacks(self.transaction_sent,
+                       self.transaction_send_error)
 
     def process_block(self, block):
 

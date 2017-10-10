@@ -35,7 +35,7 @@ addrs = []
 addrs_rpc = []
 for i in range(0, num_nodes):
     addrs.append('localhost:' + str(BASE_PORT + i))
-    addrs_rpc.append('http://127.0.0.1:' + str(BASE_PORT_RPC + i))
+    addrs_rpc.append('127.0.0.1:' + str(BASE_PORT_RPC + i))
 
 # create a list of all node object
 for i in range(0, num_nodes):

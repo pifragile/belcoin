@@ -793,7 +793,7 @@ class SyncObj(object):
         if message['type'] == 'broadcast_txn' or message['type'] == 'send_txn':
             tx = Transaction.unserialize_full(SerializationBuffer(hex2b(message[
                                                                       'txn'])))
-            print('node {} received txn {}'.format(self.nid,
+            print('node {} received txn {} from broadcast'.format(self.nid,
                                                    b2hex(tx.txid)))
 
             if len([txn for txn in self.mempool if txn[0] ==

@@ -1,9 +1,10 @@
-from txjsonrpc.web import jsonrpc
+from txjsonrpc.netstring import jsonrpc
 from tesseract.util import b2hex
 from tesseract.transaction import Transaction
 from tesseract.serialize import SerializationBuffer
 from tesseract.util import hex2b
 from belcoin_node.txnwrapper import TxnWrapper
+import time
 
 class RPCServer(jsonrpc.JSONRPC):
     def __init__(self, node):
@@ -16,7 +17,12 @@ class RPCServer(jsonrpc.JSONRPC):
     def jsonrpc_get(self, key):
         return self.node.storage.get(key)
 
-    def jsonrpc_puttxn(self, tx):
+    def jsonrpc_puttxn(self, tx, broadcast=True):
+        '''
+
+        :param tx:
+        :return: 1 if transaction was put, 0 if txn was already there
+        '''
         t = hex2b(tx)
         tx = Transaction.unserialize_full(SerializationBuffer(t))
 
@@ -25,11 +31,17 @@ class RPCServer(jsonrpc.JSONRPC):
             self.node.storage.mempool.append((tx.txid, tx))
             print('Txn {} put in mempool on node {}.'.format(b2hex(
                 tx.txid), self.node.nid))
+            rval = 1;
         else:
             print('Txn {} already in mempool on node {}.'.format(b2hex(
                 tx.txid), self.node.nid))
-        print('broadcasting transaction {}...'.format(b2hex(tx.txid)))
-        self.node.storage.broadcast_txn(b2hex(t))
+            rval = 0;
+
+        if broadcast:
+            print('Broadcasting transaction {}'.format(b2hex(
+                tx.txid)))
+            self.node.storage.broadcast_txn(b2hex(t))
+        return rval;
 
     def jsonrpc_req_txn(self,txnid,addr):
         print('Received Request for block {} from {}'.format(txnid,addr))
@@ -50,4 +62,3 @@ class RPCServer(jsonrpc.JSONRPC):
 
         txn = b2hex(txn.serialize_full().get_bytes())
         return txn
-

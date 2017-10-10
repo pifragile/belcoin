@@ -1,6 +1,8 @@
 from belcoin_node.storage import Storage
 from belcoin_node.rpcserver import RPCServer
 from twisted.web import server
+from txjsonrpc.netstring import jsonrpc
+from twisted.application import service, internet
 from twisted.internet import reactor
 import argparse
 from threading import Thread
@@ -35,10 +37,16 @@ def main():
     addr = args.addr
 
     n = Node(addr, args.peers.split(','), nid, args.rpc_peers.split(','))
-    reactor.listenTCP(rpc_port, server.Site(RPCServer(n)))
+
+    #reactor.listenTCP(rpc_port, server.Site(RPCServer(n)))
+
+    factory = jsonrpc.RPCFactory(RPCServer(n))
+    reactor.listenTCP(rpc_port, factory)
+
     t = Thread(target=console,args=(n,nid,rpc_port,addr,))
     t.start()
     reactor.run()
+
 
 def cb(err,a):
     print('Adding Node:' +str(a))
