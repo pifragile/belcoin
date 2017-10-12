@@ -1,19 +1,21 @@
-from pysyncobjbc import SyncObj, SyncObjConf, replicated
-import plyvel
-from os.path import join, expanduser
-from tesseract.serialize import SerializationBuffer
 import time
-from tesseract.transaction import Transaction
-from tesseract.util import b2hex,hex2b
-from tesseract.exceptions import InvalidTransactionError
-from tesseract.crypto import verify_sig, NO_HASH, merkle_root
-from pysyncobjbc.syncobj import BLOCK_SIZE
-from belcoin_node.txnwrapper import TxnWrapper
-from twisted.internet import reactor
-from txjsonrpc.web.jsonrpc import Proxy
 import requests
 import json
+import plyvel
+from os.path import join, expanduser
+from belcoin_node.txnwrapper import TxnWrapper
+from tesseract.serialize import SerializationBuffer
+from tesseract.transaction import Transaction
+from tesseract.util import b2hex, hex2b
+from tesseract.exceptions import InvalidTransactionError
+from tesseract.crypto import verify_sig, NO_HASH, merkle_root
+from pysyncobjbc import SyncObj, SyncObjConf, replicated
+from pysyncobjbc.syncobj import BLOCK_SIZE
+from twisted.internet import reactor
+from txjsonrpc.web.jsonrpc import Proxy
+
 from test import createtxns
+
 
 class Storage(SyncObj):
     def __init__(self, self_addr, partner_addrs, nid, node):
@@ -24,21 +26,30 @@ class Storage(SyncObj):
         self.bcnode = node
         self.db = plyvel.DB(join(expanduser('~/.belcoin'), 'db_'+str(nid)),
                             create_if_missing=True)
-        self[createtxns.genesis_txn().txid] = TxnWrapper(
-            createtxns.genesis_txn(), 0)
 
-    # @replicated
-    # def set(self, key, value):
-    #     print('Node ' +str(self.nid) + ' received ('+key+','+value+') for storage')
-    #     self.db.put(bytes(key, 'utf-8'), bytes(value, 'utf-8'))
+        #create genesis transaction:
+        gentxn = createtxns.genesis_txn()
+        if not gentxn.txid in self:
+            self[gentxn.txid] = TxnWrapper(
+                gentxn, 0)
 
-    # def get(self, key):
-    #     print('Node ' +str(self.nid)+ ' received a request for '+key)
-    #     val = self.db.get(bytes(key, 'utf-8'))
-    #     if val is None:
-    #         return '###NOT FOUND###'
-    #     else:
-    #         return self.db.get(bytes(key, 'utf-8')).decode()
+        #create index pubkey ==> (txid, index)
+        self.pub_outs = {}
+        for txid, txnw in self.db:
+            txnw = TxnWrapper.unserialize(SerializationBuffer(txnw))
+            txn = txnw.txn
+            self.add_txn_to_pub_outs(txn)
+
+
+    def add_txn_to_pub_outs(self,txn):
+        txid = txn.txid
+        for i in range(len(txn.outputs)):
+            o = txn.outputs[i]
+            for p in [o.pubkey, o.pubkey2]:
+                if p in self.pub_outs:
+                        self.pub_outs[p].add((txid, i))
+                else:
+                    self.pub_outs[p] = set([(txid, i)])
 
     def get(self, key, default=None):
         """Get an object from storage in a dictionary-like way."""
@@ -196,7 +207,11 @@ class Storage(SyncObj):
 
             # write txn to db
             self[txn.txid] = TxnWrapper(txn, ts)
-            print('txn {} ACCEPTED\n'.format(b2hex(txid)))
+
+            # update index
+            self.add_txn_to_pub_outs(txn)
+
+            print('txn {} ACCEPTED\n\n'.format(b2hex(txid)))
             self.remove_txn_from_mempool_and_return(txid)
 
 
