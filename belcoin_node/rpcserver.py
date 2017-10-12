@@ -32,8 +32,6 @@ class RPCServer(jsonrpc.JSONRPC):
             print('Txn {} received from broadcast.'.format(b2hex(
                 tx.txid)))
 
-
-
         if len([txn for txn in self.node.storage.mempool if txn[0] ==
                 tx.txid]) == 0:
             self.node.storage.mempool.append((tx.txid, tx))

@@ -29,7 +29,7 @@ def main():
     parser.add_argument('rpc_peers',
                         help='Ports of the other nodes rpc ifaces')
     parser.add_argument('addr', help='Address for RAFT')
-    parser.add_argument('peers', help='Address for RAFT')
+    parser.add_argument('peers', help='Addresses of peers for RAFT')
 
     args = parser.parse_args()
     nid = args.id
@@ -40,15 +40,13 @@ def main():
 
     reactor.listenTCP(rpc_port, server.Site(RPCServer(n)))
 
-    #factory = jsonrpc.RPCFactory(RPCServer(n))
-    #reactor.listenTCP(rpc_port, factory)
-
-    t = Thread(target=console,args=(n,nid,rpc_port,addr,))
+    t = Thread(target=console,args=(n, nid, rpc_port, addr,))
     t.start()
+
     reactor.run()
 
 
-def cb(err,a):
+def cb(err, a):
     print('Adding Node:' +str(a))
 
 def console(n,nid,rpc_port,addr):

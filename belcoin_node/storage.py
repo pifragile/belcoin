@@ -4,13 +4,14 @@ import json
 import plyvel
 from os.path import join, expanduser
 from belcoin_node.txnwrapper import TxnWrapper
+from belcoin_node.util import PUBS,PRIVS
 from tesseract.serialize import SerializationBuffer
 from tesseract.transaction import Transaction
 from tesseract.util import b2hex, hex2b
 from tesseract.exceptions import InvalidTransactionError
 from tesseract.crypto import verify_sig, NO_HASH, merkle_root
 from pysyncobjbc import SyncObj, SyncObjConf, replicated
-from pysyncobjbc.syncobj import BLOCK_SIZE
+from belcoin_node.config import BLOCK_SIZE
 from twisted.internet import reactor
 from txjsonrpc.web.jsonrpc import Proxy
 
@@ -50,6 +51,21 @@ class Storage(SyncObj):
                         self.pub_outs[p].add((txid, i))
                 else:
                     self.pub_outs[p] = set([(txid, i)])
+
+    def get_balance(self, pubkey):
+        bal = 0
+        for (txid, i) in self.pub_outs[pubkey]:
+            txnw = self[txid]
+            if txnw.utxos[i]:
+                o = txnw.txn.outputs[i]
+                if o.pubkey == o.pubkey2:
+                    bal += o.amount
+        return bal
+
+    def print_balances(self):
+        for i in range(len(PUBS)):
+            print('Balance of {} is {}'.format(i, self.get_balance(PUBS[i])))
+
 
     def get(self, key, default=None):
         """Get an object from storage in a dictionary-like way."""
@@ -148,74 +164,78 @@ class Storage(SyncObj):
                 raise InvalidTransactionError(
                     "COLLISION OOOHHH MYYYY GOOOOD".format(self.nid))
             txn = tx[0]
-            addr = self.addr
 
-            ########################
-            # verify and write txn #
-            ########################
             ts = int(time.time() * 1000000000)
-            if txid in self:
-                print('Trasaction {} is already stored'.format(b2hex(txid)))
-                self.remove_txn_from_mempool_and_return(txid)
-                return
 
-            for inp in txn.inputs:
-                if inp.txid == NO_HASH:  # skip dummy inputs
-                    continue
-                try:
+            if self.verify_txn(txn):
+                # set all outputs to spent
+                for inp in txn.inputs:
                     output_txnw = self[inp.txid]
-                    spent_output = output_txnw.txn.outputs[inp.index]
-                except KeyError:
-                    if addr == self.addr:
-                        print("Invalid input on transaction %s!" % b2hex(
-                            txn.txid))
-                        self.remove_txn_from_mempool_and_return(txid)
-                        # raise InvalidTransactionError(
-                        #     "Invalid input on transaction %s!" % b2hex(txn.txid))
-                        return
+                    output_txnw.utxos[inp.index] = False
+                    self[inp.txid] = output_txnw
 
-                # verify signatures
-                if (not verify_sig(txn.txid, spent_output.pubkey,
-                                   inp.signature) or
-                        not verify_sig(txn.txid, spent_output.pubkey2,
-                                       inp.signature2)):
-                    if addr == self.addr:
-                        print("Invalid signatures on transaction %s!" % b2hex(
-                            txn.txid))
-                        self.remove_txn_from_mempool_and_return(txid)
-                        return
+                # write txn to db
+                self[txn.txid] = TxnWrapper(txn, ts)
+
+                # update index
+                self.add_txn_to_pub_outs(txn)
+
+                print('txn {} ACCEPTED\n'.format(b2hex(txid)))
+
+            self.remove_txn_from_mempool_and_return(txid)
+            self.print_balances()
+            print('\n')
+
+
+
+    def verify_txn(self, txn):
+        txid = txn.txid
+        if txid in self:
+            print('Trasaction {} is already stored'.format(b2hex(txid)))
+            self.remove_txn_from_mempool_and_return(txid)
+            return False
+
+        has_coins = 0
+        for inp in txn.inputs:
+            if inp.txid == NO_HASH:  # skip dummy inputs
+                continue
+            try:
+                output_txnw = self[inp.txid]
+                spent_output = output_txnw.txn.outputs[inp.index]
+                has_coins += spent_output.amount
+            except KeyError:
+                    print("Invalid input on transaction %s!" % b2hex(
+                        txn.txid))
+                    # raise InvalidTransactionError(
+                    #     "Invalid input on transaction %s!" % b2hex(txn.txid))
+                    return False
+
+            # verify signatures
+            if (not verify_sig(txn.txid, spent_output.pubkey,
+                               inp.signature) or
+                    not verify_sig(txn.txid, spent_output.pubkey2,
+                                   inp.signature2)):
+                    print("Invalid signatures on transaction %s!" % b2hex(
+                        txn.txid))
+                    return False
                     # raise InvalidTransactionError(
                     #     "Invalid signatures on transaction %s!" % b2hex(
                     #         txn.txid))
 
-                # check if outputs are unspent
-                if not output_txnw.utxos[inp.index]:
-                    if addr == self.addr:
-                        print( "Transactions %s uses spent outputs!" % b2hex(
-                            txn.txid))
-                        self.remove_txn_from_mempool_and_return(txid)
-                        return
+            # check if outputs are unspent
+            if not output_txnw.utxos[inp.index]:
+                    print("Transaction %s uses spent outputs!" % b2hex(
+                        txn.txid))
+                    return False
                     # raise InvalidTransactionError(
                     #     "Transactions %s uses spent outputs!" % b2hex(
                     #         txn.txid))
 
-            # set all outputs to spent
-            for inp in txn.inputs:
-                output_txnw = self[inp.txid]
-                output_txnw.utxos[inp.index] = False
-                self[inp.txid] = output_txnw
-
-            # write txn to db
-            self[txn.txid] = TxnWrapper(txn, ts)
-
-            # update index
-            self.add_txn_to_pub_outs(txn)
-
-            print('txn {} ACCEPTED\n\n'.format(b2hex(txid)))
-            self.remove_txn_from_mempool_and_return(txid)
-
-
-
+        spends_coins = sum([out.amount for out in txn.outputs])
+        if not has_coins == spends_coins:
+            print('Sum of Output Amounts doesnt equal sum of Input Amounts')
+            return False
+        return True
 
     def remove_txn_from_mempool_and_return(self, txid):
         self.mempool = [txn for txn in self.mempool if txn[0] != txid]

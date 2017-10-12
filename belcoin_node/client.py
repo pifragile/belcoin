@@ -14,7 +14,11 @@ import argparse
 # args = parser.parse_args()
 # port = args.port
 k = 0
-test_transactions = createtxns.generate_txns()
+test_transactions = createtxns.generate_txns() + \
+                    createtxns.generate_conflicting_txns() + \
+                    createtxns.generate_unbalaced_txn()
+
+
 
 
 def printValue(value):
@@ -25,7 +29,6 @@ def printError(error):
     print ('error', error)
 
 def cont(data):
-    time.sleep(5)
     main()
 
 def call_set(port,key,value):
@@ -45,6 +48,7 @@ def call_txn(port,txn):
 
     d = proxy.callRemote('puttxn', txn, True)
     d.addCallbacks(printValue, printError).addBoth(cont)
+    main()
 
 def run():
         cmd = input('>>').split()
@@ -90,9 +94,6 @@ def main():
         reactor.callLater(0, call_txn, BASE_PORT_RPC + randint(0, 3),
                           b2hex(txn.serialize_full().get_bytes()))
         k +=1
-    else:
-        reactor.stop()
-        exit()
 
 print('This is the client! Usage:')
 print('>> set port key value')

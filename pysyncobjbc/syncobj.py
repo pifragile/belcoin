@@ -64,8 +64,7 @@ class _COMMAND_TYPE:
 _bchr = functools.partial(struct.pack, 'B')
 
 ###belcoin
-BLOCK_TIMEOUT = 100000 #in ticks
-BLOCK_SIZE = 1 #in transactions
+from belcoin_node.config import BLOCK_SIZE, BLOCK_TIMEOUT
 ###
 
 class SyncObjException(Exception):

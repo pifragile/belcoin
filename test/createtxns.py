@@ -1,17 +1,6 @@
 from tesseract.transaction import Input,Output,Transaction
 from tesseract.crypto import generate_keypair,sign
-
-pubs = [b"\x18D\xd9Ts\xdc\xe8y-/\x88^nxg\n1\x10\xc5E\x97z\xc1^Q>\x91k/\n*'", b'\x16-F>A\xc132\xb3qi\xba\xd2\x8fs\xe0k\xa2\xb4\x80\x17\x7fP4\xd4\xd8\x04s\xe5\xf5\x1f\xd2', b'\x9a\x18\x8d\xe2e\xcb_i\xe8\x9d\x14+P\x9f\x08\xdf\xc9\xf8j=\x03\xaa\x05\xbe\xa2\x8bZ\xb4-q\x96\xb5', b'p\xb3\xba\xda\x1d\xeb\xfe\xdd\xe5k\xf9\x08W\xa20L3\x81\xc4\xc9\xe6\xca\xab\x06i~\xc5\x13y\xff\xa2\xe6', b'\x18[\xb6R\xc3L\xfe\xde(<\xa2\xaf9\xc0P\xfbXh\xf9\x1c\xb8\xde\x11\xf0\xf8|Ki]\xa4\x97\xa6']
-
-privs = [b"\x05\n\xc6p,\tB\xcd\xa5\x1b\xb37\xb8A.O\x17\xd0\xe9\xfdp\x8d\x8e\xeb\x99\xc1N+!\xcc#\xca\x18D\xd9Ts\xdc\xe8y-/\x88^nxg\n1\x10\xc5E\x97z\xc1^Q>\x91k/\n*'", b'\xe0q[5\x01,\xeb+\xda>\x89`\xc0\tT\x9c\xaf\x04q\xbe\xe8\x82\xdf6G\t\xe6\x19Dy\xd13\x16-F>A\xc132\xb3qi\xba\xd2\x8fs\xe0k\xa2\xb4\x80\x17\x7fP4\xd4\xd8\x04s\xe5\xf5\x1f\xd2', b'\xf3\x8f\xa4\xed\x89h\x10\xe7\xc3\t\x10yMh\x7fr\xab\xaf\x0cPn\xa0\xfc\xa5\xe5\xe7\xff\x95\xbc\x00\xc4I\x9a\x18\x8d\xe2e\xcb_i\xe8\x9d\x14+P\x9f\x08\xdf\xc9\xf8j=\x03\xaa\x05\xbe\xa2\x8bZ\xb4-q\x96\xb5', b'qR8\x1eh\n2jYT\x90\xad\xdd\x91}F\xb2\xd9\xe0\x04_\r\xfa\xab~\xd1\xff\x0f&l?gp\xb3\xba\xda\x1d\xeb\xfe\xdd\xe5k\xf9\x08W\xa20L3\x81\xc4\xc9\xe6\xca\xab\x06i~\xc5\x13y\xff\xa2\xe6', b'J9;\x10!\x16\xb011\xadI\xc6\xbb\x93&\xae\x91\xfb-\xf1\x102\xba\x16qMv\x87\x9b\x9c\t\xd2\x18[\xb6R\xc3L\xfe\xde(<\xa2\xaf9\xc0P\xfbXh\xf9\x1c\xb8\xde\x11\xf0\xf8|Ki]\xa4\x97\xa6']
-
-# for _ in range(5):
-#     priv, pub = generate_keypair()
-#     pubs.append(pub)
-#     privs.append(priv)
-# print(pubs)
-# print(privs)
-
+from belcoin_node.util import PRIVS, PUBS
 
 
 def generate_txns():
@@ -20,16 +9,44 @@ def generate_txns():
     for i in range(5):
         txn = Transaction(
             [Input(txid, i)],
-            [Output(100, pubs[(i+1) % 5], pubs[(i+1) % 5]),
-             Output(900, pubs[i], pubs[i])]
+            [Output(100, PUBS[(i+1) % 5], PUBS[(i+1) % 5]),
+             Output(900, PUBS[i], PUBS[i])]
         )
         for inp in txn.inputs:
-            inp.signature = sign(txn.txid,privs[i])
-            inp.signature2 = sign(txn.txid,privs[i])
+            inp.signature = sign(txn.txid, PRIVS[i])
+            inp.signature2 = sign(txn.txid, PRIVS[i])
         txns.append(txn)
     return txns
 
+def generate_conflicting_txns():
+    txns = []
+    txid = genesis_txn().txid
+    for i in range(5):
+        txn = Transaction(
+            [Input(txid, i)],
+            [Output(101, PUBS[(i+1) % 5], PUBS[(i+1) % 5]),
+             Output(899, PUBS[i], PUBS[i])]
+        )
+        for inp in txn.inputs:
+            inp.signature = sign(txn.txid,PRIVS[i])
+            inp.signature2 = sign(txn.txid,PRIVS[i])
+        txns.append(txn)
+    return txns
+
+def generate_unbalaced_txn():
+    txn = Transaction(
+        [Input(genesis_txn().txid, 5), Input(genesis_txn().txid, 10)],
+        [Output(100, PUBS[1], PUBS[1]),
+         Output(501, PUBS[0], PUBS[0])]
+    )
+    for inp in txn.inputs:
+        inp.signature = sign(txn.txid, PRIVS[0])
+        inp.signature2 = sign(txn.txid, PRIVS[0])
+    return [txn]
 
 def genesis_txn():
-    outputs = [Output(1000, pubs[i], pubs[i]) for i in range(5)]
-    return Transaction([], outputs)
+    outputs = [Output(1000, PUBS[i], PUBS[i]) for i in range(5)]
+    outputs2 = [Output(500, PUBS[i], PUBS[i]) for i in range(5)]
+    outputs3 = [Output(100, PUBS[i], PUBS[i]) for i in range(5)]
+    #return Transaction([], outputs)
+    return Transaction([], outputs + outputs2 + outputs3)
