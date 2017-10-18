@@ -2,4 +2,6 @@ BASE_PORT = 27870
 BASE_PORT_RPC = 7080
 
 BLOCK_TIMEOUT = 100000 #in ticks
-BLOCK_SIZE = 1 #in transactions
+BLOCK_SIZE = 5 #in transactions
+
+TIME_MULTIPLIER = 1000000000

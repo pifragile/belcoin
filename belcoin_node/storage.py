@@ -9,9 +9,9 @@ from tesseract.serialize import SerializationBuffer
 from tesseract.transaction import Transaction
 from tesseract.util import b2hex, hex2b
 from tesseract.exceptions import InvalidTransactionError
-from tesseract.crypto import verify_sig, NO_HASH, merkle_root
+from tesseract.crypto import verify_sig, NO_HASH, merkle_root, sha256
 from pysyncobjbc import SyncObj, SyncObjConf, replicated
-from belcoin_node.config import BLOCK_SIZE
+from belcoin_node.config import BLOCK_SIZE, TIME_MULTIPLIER
 from twisted.internet import reactor
 from txjsonrpc.web.jsonrpc import Proxy
 
@@ -165,7 +165,7 @@ class Storage(SyncObj):
                     "COLLISION OOOHHH MYYYY GOOOOD".format(self.nid))
             txn = tx[0]
 
-            ts = int(time.time() * 1000000000)
+            ts = int(time.time() * TIME_MULTIPLIER)
 
             if self.verify_txn(txn):
                 # set all outputs to spent
@@ -206,30 +206,46 @@ class Storage(SyncObj):
             except KeyError:
                     print("Invalid input on transaction %s!" % b2hex(
                         txn.txid))
-                    # raise InvalidTransactionError(
-                    #     "Invalid input on transaction %s!" % b2hex(txn.txid))
                     return False
 
             # verify signatures
-            if (not verify_sig(txn.txid, spent_output.pubkey,
-                               inp.signature) or
-                    not verify_sig(txn.txid, spent_output.pubkey2,
-                                   inp.signature2)):
-                    print("Invalid signatures on transaction %s!" % b2hex(
+            #Case timeout reached
+            if time.time() * TIME_MULTIPLIER - output_txnw.timestamp >= \
+                    spent_output.htlc_timeout:
+                #Check pubkey and pubkey2
+                if (not verify_sig(txn.txid, spent_output.pubkey,
+                                   inp.signature) or
+                        not verify_sig(txn.txid, spent_output.pubkey2,
+                                       inp.signature2)):
+                        print("Invalid signatures on transaction %s!" % b2hex(
+                            txn.txid))
+                        return False
+
+            #Case that timeout isnt reached yet
+            else:
+                if not sha256(inp.htlc_preimage) == spent_output.htlc_hashlock:
+                    print("Preimage doesn't match hashlock on transaction "
+                          "%s!" % b2hex(
                         txn.txid))
                     return False
-                    # raise InvalidTransactionError(
-                    #     "Invalid signatures on transaction %s!" % b2hex(
-                    #         txn.txid))
+                # TODO i assumed that both sigs need to match
+                if (not verify_sig(txn.txid, spent_output.htlc_pubkey,
+                                   inp.signature) or
+                        not verify_sig(txn.txid, spent_output.htlc_pubkey,
+                                       inp.signature2)):
+                        print("Invalid signatures on transaction %s!" % b2hex(
+                            txn.txid))
+                        return False
+
+
+
 
             # check if outputs are unspent
             if not output_txnw.utxos[inp.index]:
                     print("Transaction %s uses spent outputs!" % b2hex(
                         txn.txid))
                     return False
-                    # raise InvalidTransactionError(
-                    #     "Transactions %s uses spent outputs!" % b2hex(
-                    #         txn.txid))
+
 
         spends_coins = sum([out.amount for out in txn.outputs])
         if not has_coins == spends_coins:

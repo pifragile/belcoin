@@ -14,9 +14,9 @@ import argparse
 # args = parser.parse_args()
 # port = args.port
 k = 0
-test_transactions = createtxns.generate_txns() + \
-                    createtxns.generate_conflicting_txns() + \
-                    createtxns.generate_unbalaced_txn()
+test_transactions = createtxns.generate_txns() #+ \
+                    #createtxns.generate_conflicting_txns() + \
+                    #createtxns.generate_unbalaced_txn()
 
 
 
