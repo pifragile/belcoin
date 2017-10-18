@@ -11,7 +11,7 @@ from tesseract.util import b2hex, hex2b
 from tesseract.exceptions import InvalidTransactionError
 from tesseract.crypto import verify_sig, NO_HASH, merkle_root, sha256
 from pysyncobjbc import SyncObj, SyncObjConf, replicated
-from belcoin_node.config import BLOCK_SIZE, TIME_MULTIPLIER, TIMEOUT_CONST
+from belcoin_node.config import BLOCK_SIZE, TIME_MULTIPLIER, TIMEOUT_CONST, TIMELOCK_CONST
 from twisted.internet import reactor
 from txjsonrpc.web.jsonrpc import Proxy
 from terminaltables import AsciiTable
@@ -28,6 +28,7 @@ class Storage(SyncObj):
         self.bcnode = node
         self.db = plyvel.DB(join(expanduser('~/.belcoin'), 'db_'+str(nid)),
                             create_if_missing=True)
+        self.pend = {} #dict of txns that have a timelock to wait for
 
         #create genesis transaction:
         gentxn = createtxns.genesis_txn()
@@ -103,6 +104,23 @@ class Storage(SyncObj):
         table = AsciiTable(table_data)
         print(table.table)
 
+    def check_pend_replacement(self, txn):
+        """
+        Returns (x,y)
+        X is True if the txn can be put into pend, be written to the db
+        respectively
+        y is true if txn is already in pend
+        """
+        in_pend = False
+        for txid, txnw in self.pend:
+            tx = txnw.txn
+            if set(txn.inputs) == set(tx.inputs):
+                if time.time() * TIME_MULTIPLIER - tx.ts < tx.timelock * \
+                        TIMELOCK_CONST:
+                    if txn.seq <= tx.seq:
+                        return False
+                del self.pend[txid]
+        return True
 
     def get(self, key, default=None):
         """Get an object from storage in a dictionary-like way."""
@@ -216,8 +234,12 @@ class Storage(SyncObj):
                         output_txnw.txn.outputs[inp.index].get_pubkeys(),
                         inp.txid, inp.index)
 
-                # write txn to db
-                self[txn.txid] = TxnWrapper(txn, ts)
+                if self.check_pend_replacement():
+                    #txn has timelock and needs to wait
+                    pass
+                else:
+                    # write txn to db
+                    self[txn.txid] = TxnWrapper(txn, ts)
 
                 # update index
                 self.add_txn_to_pub_outs(txn)
@@ -246,8 +268,12 @@ class Storage(SyncObj):
                 spent_output = output_txnw.txn.outputs[inp.index]
                 has_coins += spent_output.amount
             except KeyError:
-                    print("Invalid input on transaction %s!" % b2hex(
-                        txn.txid))
+                    if inp.txid in self.pend:
+                        print("Referenced transaction {} is still "
+                              "locked".format(b2hex(inp.txid)))
+                    else:
+                        print("Invalid input on transaction %s!" % b2hex(
+                            txn.txid))
                     return False
 
             # verify signatures

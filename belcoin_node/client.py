@@ -63,7 +63,7 @@ def call_txn(port,txn):
 
     d = proxy.callRemote('puttxn', txn, True)
     d.addCallbacks(printValue, printError).addBoth(cont_txn)
-    test_txns()
+    #test_txns()
 
 def call_bal(port):
     try:
