@@ -14,6 +14,7 @@ from pysyncobjbc import SyncObj, SyncObjConf, replicated
 from belcoin_node.config import BLOCK_SIZE, TIME_MULTIPLIER
 from twisted.internet import reactor
 from txjsonrpc.web.jsonrpc import Proxy
+from terminaltables import AsciiTable
 
 from test import createtxns
 
@@ -46,25 +47,61 @@ class Storage(SyncObj):
         txid = txn.txid
         for i in range(len(txn.outputs)):
             o = txn.outputs[i]
-            for p in [o.pubkey, o.pubkey2]:
+            for p in o.get_pubkeys():
                 if p in self.pub_outs:
                         self.pub_outs[p].add((txid, i))
                 else:
                     self.pub_outs[p] = set([(txid, i)])
 
+    def del_out_from_pub_outs(self, pubkeys, txid, index):
+        for pubkey in pubkeys:
+            if pubkey not in self.pub_outs:
+                print('trying to delete output for a pubkey which doesn\'t exist '
+                      'from pub_outs')
+                continue
+
+            try:
+                self.pub_outs[pubkey].remove((txid, index))
+            except KeyError:
+                print('trying to delete output which doesn\'t exist from pub_outs')
+                raise KeyError('trying to delete output which doesn\'t exist from pub_outs')
+                continue
+
     def get_balance(self, pubkey):
         bal = 0
+        bal_partial = 0
+        bal_htlc = 0
+        if pubkey not in self.pub_outs:
+            return 0
+
         for (txid, i) in self.pub_outs[pubkey]:
             txnw = self[txid]
-            if txnw.utxos[i]:
-                o = txnw.txn.outputs[i]
+            o = txnw.txn.outputs[i]
+            #Case timeout reached
+            if pubkey in [o.pubkey, o.pubkey2] and time.time() * \
+                    TIME_MULTIPLIER - txnw.timestamp >= o.htlc_timeout:
                 if o.pubkey == o.pubkey2:
                     bal += o.amount
-        return bal
+                else:
+                    bal_partial += o.amount
+
+            if pubkey == o.htlc_pubkey and time.time() * \
+                    TIME_MULTIPLIER - txnw.timestamp < o.htlc_timeout:
+                bal_htlc += o.amount
+
+        return [bal, bal_partial, bal_htlc]
 
     def print_balances(self):
+        print('Balances: ')
+        table_data = [
+            ['Owner','Totally owned', 'Partially owned', 'HTLC (if secret '
+                                                      'can ' \
+                                                    'be '
+                                                 'provided)']]
         for i in range(len(PUBS)):
-            print('Balance of {} is {}'.format(i, self.get_balance(PUBS[i])))
+            table_data.append([i] + self.get_balance(PUBS[i]))
+        table = AsciiTable(table_data)
+        print(table.table)
 
 
     def get(self, key, default=None):
@@ -174,6 +211,11 @@ class Storage(SyncObj):
                     output_txnw.utxos[inp.index] = False
                     self[inp.txid] = output_txnw
 
+                    #delete output from pub_outs index
+                    self.del_out_from_pub_outs(
+                        output_txnw.txn.outputs[inp.index].get_pubkeys(),
+                        inp.txid, inp.index)
+
                 # write txn to db
                 self[txn.txid] = TxnWrapper(txn, ts)
 
@@ -237,9 +279,6 @@ class Storage(SyncObj):
                             txn.txid))
                         return False
 
-
-
-
             # check if outputs are unspent
             if not output_txnw.utxos[inp.index]:
                     print("Transaction %s uses spent outputs!" % b2hex(
@@ -251,6 +290,7 @@ class Storage(SyncObj):
         if not has_coins == spends_coins:
             print('Sum of Output Amounts doesnt equal sum of Input Amounts')
             return False
+
         return True
 
     def remove_txn_from_mempool_and_return(self, txid):
