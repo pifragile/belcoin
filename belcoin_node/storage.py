@@ -11,7 +11,7 @@ from tesseract.util import b2hex, hex2b
 from tesseract.exceptions import InvalidTransactionError
 from tesseract.crypto import verify_sig, NO_HASH, merkle_root, sha256
 from pysyncobjbc import SyncObj, SyncObjConf, replicated
-from belcoin_node.config import BLOCK_SIZE, TIME_MULTIPLIER
+from belcoin_node.config import BLOCK_SIZE, TIME_MULTIPLIER, TIMEOUT_CONST
 from twisted.internet import reactor
 from txjsonrpc.web.jsonrpc import Proxy
 from terminaltables import AsciiTable
@@ -79,14 +79,14 @@ class Storage(SyncObj):
             o = txnw.txn.outputs[i]
             #Case timeout reached
             if pubkey in [o.pubkey, o.pubkey2] and time.time() * \
-                    TIME_MULTIPLIER - txnw.timestamp >= o.htlc_timeout:
+                    TIME_MULTIPLIER - txnw.timestamp >= o.htlc_timeout * TIMEOUT_CONST:
                 if o.pubkey == o.pubkey2:
                     bal += o.amount
                 else:
                     bal_partial += o.amount
 
             if pubkey == o.htlc_pubkey and time.time() * \
-                    TIME_MULTIPLIER - txnw.timestamp < o.htlc_timeout:
+                    TIME_MULTIPLIER - txnw.timestamp < o.htlc_timeout * TIMEOUT_CONST:
                 bal_htlc += o.amount
 
         return [bal, bal_partial, bal_htlc]
@@ -253,7 +253,7 @@ class Storage(SyncObj):
             # verify signatures
             #Case timeout reached
             if time.time() * TIME_MULTIPLIER - output_txnw.timestamp >= \
-                    spent_output.htlc_timeout:
+                    spent_output.htlc_timeout * TIMEOUT_CONST:
                 #Check pubkey and pubkey2
                 if (not verify_sig(txn.txid, spent_output.pubkey,
                                    inp.signature) or
@@ -270,11 +270,9 @@ class Storage(SyncObj):
                           "%s!" % b2hex(
                         txn.txid))
                     return False
-                # TODO i assumed that both sigs need to match
+
                 if (not verify_sig(txn.txid, spent_output.htlc_pubkey,
-                                   inp.signature) or
-                        not verify_sig(txn.txid, spent_output.htlc_pubkey,
-                                       inp.signature2)):
+                                   inp.signature)):
                         print("Invalid signatures on transaction %s!" % b2hex(
                             txn.txid))
                         return False

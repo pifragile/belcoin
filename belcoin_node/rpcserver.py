@@ -67,3 +67,6 @@ class RPCServer(jsonrpc.JSONRPC):
 
         txn = b2hex(txn.serialize_full().get_bytes())
         return txn
+
+    def jsonrpc_print_balances(self):
+        self.node.storage.print_balances()
