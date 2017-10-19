@@ -99,7 +99,7 @@ def generate_pending_txns():
             [Output(100, PUBS[i], PUBS[i], 10, HASHLOCKS[i], PUBS[(i + 1) %
                                                                     5])],
             seq=0,
-            timelock=15
+            timelock=12
         )
         for inp in txn.inputs:
             inp.signature = sign(txn.txid, PRIVS[i])
@@ -125,6 +125,19 @@ def generate_pending_txns2():
             inp.signature2 = sign(txn.txid, PRIVS[i])
         txns.append(txn)
     return txns
+
+def generate_conflicting_txn_pend():
+    txid = genesis_txn().txid
+    txn = Transaction(
+        [Input(txid, 10), Input(txid, 5)],
+        [
+         Output(600, PUBS[0], PUBS[0])
+         ]
+    )
+    for inp in txn.inputs:
+        inp.signature = sign(txn.txid, PRIVS[0])
+        inp.signature2 = sign(txn.txid, PRIVS[0])
+    return [txn]
 
 def genesis_txn():
     outputs = [Output(1000, PUBS[i], PUBS[i]) for i in range(5)]
