@@ -131,18 +131,17 @@ class Storage(SyncObj):
 
     def check_pend_replacement(self, txn):
         """
-        Returns True if the txn can be put into pend, be written to the db
+        Returns (x,y)
+        x is True if the txn can be put into pend, be written to the db
         respectively
+        y is true if a matching txn was found in pend
+
         Assumption: For a txn to be able to replace another one the inputs
         have to match exactly.
         """
         for txid, txnw in self.pend.db:
             txnw = TxnWrapper.unserialize(SerializationBuffer(txnw))
             tx = txnw.txn
-            print(set([str(inp) for inp in map(self.comparable_input,
-                                               tx.inputs)])\
-                , set([str(inp) for inp in map(self.comparable_input,
-                                               txn.inputs)]))
 
             if set([str(inp) for inp in map(self.comparable_input,
                                                tx.inputs)])\
@@ -150,24 +149,13 @@ class Storage(SyncObj):
                                                txn.inputs)]):
                 if time.time() * TIME_MULTIPLIER - txnw.timestamp > tx.timelock * \
                         TIMELOCK_CONST:
-                    return False
+                    return False, True
                 if txn.seq <= tx.seq:
-                    return False
+                    return False, True
                 self.del_from_pending(tx)
-                return True
-        return True
+                return True, True
+        return True, False
 
-    def compare_inputs(self, inputs, inputs2):
-        """
-        Compares two lists of inputs
-        """
-        if not len(inputs) == len(inputs2):
-            return False
-        for i in range(len(inputs)):
-            if not (inputs[i].txid == inputs2[i].txid and inputs[i].index == \
-                    inputs2[i].index):
-                return False
-        return True
 
     def comparable_input(self, inp):
         return {
@@ -191,8 +179,7 @@ class Storage(SyncObj):
 
                 self.del_from_pending(txnw.txn)
                 if self.verify_txn(txnw.txn, check_pend=False):
-                    self[txid] = txnw
-                    self.add_txn_to_balance_index(txnw.txn, self.pub_outs)
+                    self.write_txn_to_db(txnw.txn, timestamp)
                     print('Transaction {} was pending and now put in '
                           'db'.format(b2hex(txid)))
                 else:
@@ -316,6 +303,11 @@ class Storage(SyncObj):
                     self.add_txn_to_balance_index(txn, self.pub_outs_pend)
                     for inp in txn.inputs:
                         output_txnw = self[inp.txid]
+                        #set outputs to spent
+
+                        output_txnw.utxos[inp.index] = False
+                        self[inp.txid] = output_txnw
+
                         # delete output from pub_outs index
                         self.del_out_from_balance_index(
                             output_txnw.txn.outputs[inp.index].get_pubkeys(),
@@ -401,12 +393,24 @@ class Storage(SyncObj):
                         self.remove_txn_from_mempool_and_return(txid)
                         return False
 
-            # check if outputs are unspent
-            if not output_txnw.utxos[inp.index]:
-                    print("Transaction %s uses spent outputs!" % b2hex(
-                        txn.txid))
+            if check_pend:
+                check = self.check_pend_replacement(txn)
+                if not check[0]:
+                    print(
+                        'txn %s tries to replace a txn for which it is not allowed' %
+                        b2hex(txn.txid))
                     self.remove_txn_from_mempool_and_return(txid)
                     return False
+
+                #if a matching txn was found, the outputs are already set to
+                # spent
+                if not check[1]:
+                    # check if outputs are unspent
+                    if not output_txnw.utxos[inp.index]:
+                            print("Transaction %s uses spent outputs!" % b2hex(
+                                txn.txid))
+                            self.remove_txn_from_mempool_and_return(txid)
+                            return False
 
 
         spends_coins = sum([out.amount for out in txn.outputs])
@@ -415,12 +419,7 @@ class Storage(SyncObj):
                         txn.txid))
             self.remove_txn_from_mempool_and_return(txid)
             return False
-        if check_pend:
-            if not self.check_pend_replacement(txn):
-                print('txn %s tries to replace a txn for which it is not allowed' %
-                      b2hex(txn.txid))
-                self.remove_txn_from_mempool_and_return(txid)
-                return False
+
 
         return True
 

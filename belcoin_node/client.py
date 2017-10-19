@@ -16,7 +16,8 @@ import argparse
 k = 0
 b = 0
 test_transactions = createtxns.generate_pending_txns() +\
-                    createtxns.generate_pending_txns2()
+                    createtxns.generate_conflicting_txn_pend()
+                    #createtxns.generate_pending_txns2()
                     #createtxns.generate_htlc_txns() + \
                     #createtxns.generate_htlc_txns2()
                     #createtxns.generate_partial_txns()
