@@ -271,6 +271,9 @@ class SyncObj(object):
             self.__initInTickThread()
 
     ###belcoin
+    def update_pend(self):
+        pass
+
     def send_block(self):
         pass
 
@@ -600,6 +603,7 @@ class SyncObj(object):
                 self.__loadDumpFile(clearJournal=False)
             self.__needLoadDumpFile = False
 
+
         if self.__raftState in (_RAFT_STATE.FOLLOWER, _RAFT_STATE.CANDIDATE) and self.__selfNodeAddr is not None:
             if self.__raftElectionDeadline < time.time() and self.__connectedToAnyone():
                 self.__raftElectionDeadline = time.time() + self.__generateRaftTimeout()
@@ -620,9 +624,9 @@ class SyncObj(object):
                     self.__onBecomeLeader()
 
         if self.__raftState == _RAFT_STATE.LEADER:
-
             ###belcoin
             self.__tickctr += 1
+            self.update_pend()
             if (self.__tickctr >= BLOCK_TIMEOUT and len(self.mempool) > 0) or \
                             len(self.mempool) >= BLOCK_SIZE:
 

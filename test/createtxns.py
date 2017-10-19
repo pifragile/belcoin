@@ -90,6 +90,42 @@ def generate_htlc_txns2():
         txns.append(txn)
     return txns
 
+def generate_pending_txns():
+    txns = []
+    txid = genesis_txn().txid
+    for i in range(5):
+        txn = Transaction(
+            [Input(txid, i + 10)],
+            [Output(100, PUBS[i], PUBS[i], 10, HASHLOCKS[i], PUBS[(i + 1) %
+                                                                    5])],
+            seq=0,
+            timelock=15
+        )
+        for inp in txn.inputs:
+            inp.signature = sign(txn.txid, PRIVS[i])
+            inp.signature2 = sign(txn.txid, PRIVS[i])
+        txns.append(txn)
+    return txns
+
+def generate_pending_txns2():
+    txns = []
+    txid = genesis_txn().txid
+    for i in range(5):
+        txn = Transaction(
+            [Input(txid, i + 10)],
+            [Output(50, PUBS[i], PUBS[i], 15, HASHLOCKS[i], PUBS[(i + 1) %
+                                                                    5]),
+             Output(50, PUBS[i], PUBS[i])
+             ],
+            seq=1,
+            timelock=10
+        )
+        for inp in txn.inputs:
+            inp.signature = sign(txn.txid, PRIVS[i])
+            inp.signature2 = sign(txn.txid, PRIVS[i])
+        txns.append(txn)
+    return txns
+
 def genesis_txn():
     outputs = [Output(1000, PUBS[i], PUBS[i]) for i in range(5)]
     outputs2 = [Output(500, PUBS[i], PUBS[i]) for i in range(5)]

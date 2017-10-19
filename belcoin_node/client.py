@@ -15,7 +15,8 @@ import argparse
 # port = args.port
 k = 0
 b = 0
-test_transactions = createtxns.generate_pending_txns()
+test_transactions = createtxns.generate_pending_txns() +\
+                    createtxns.generate_pending_txns2()
                     #createtxns.generate_htlc_txns() + \
                     #createtxns.generate_htlc_txns2()
                     #createtxns.generate_partial_txns()
@@ -115,6 +116,8 @@ def run():
 def test_txns():
     global k
     if k < len(test_transactions):
+        if k == 5:
+            time.sleep(7)
         txn = test_transactions[k]
         reactor.callLater(0, call_txn, BASE_PORT_RPC + randint(0, 3),
                           b2hex(txn.serialize_full().get_bytes()))

@@ -7,7 +7,7 @@ from belcoin_node.txnwrapper import TxnWrapper
 from belcoin_node.util import PUBS
 from belcoin_node.pendingdb import PendingDB
 from tesseract.serialize import SerializationBuffer
-from tesseract.transaction import Transaction
+from tesseract.transaction import Transaction,Input
 from tesseract.util import b2hex, hex2b
 from tesseract.exceptions import InvalidTransactionError
 from tesseract.crypto import verify_sig, NO_HASH, merkle_root, sha256
@@ -76,8 +76,6 @@ class Storage(SyncObj):
             except KeyError:
                 print('trying to delete output which doesn\'t exist from '+
                       index_name)
-                raise KeyError('trying to delete output which doesn\'t exist '
-                               'from  ' + index_name)
                 continue
 
     def get_balance(self, pubkey, index):
@@ -141,8 +139,16 @@ class Storage(SyncObj):
         for txid, txnw in self.pend.db:
             txnw = TxnWrapper.unserialize(SerializationBuffer(txnw))
             tx = txnw.txn
-            if set(txn.inputs) == set(tx.inputs):
-                if time.time() * TIME_MULTIPLIER - tx.ts > tx.timelock * \
+            print(set([str(inp) for inp in map(self.comparable_input,
+                                               tx.inputs)])\
+                , set([str(inp) for inp in map(self.comparable_input,
+                                               txn.inputs)]))
+
+            if set([str(inp) for inp in map(self.comparable_input,
+                                               tx.inputs)])\
+                == set([str(inp) for inp in map(self.comparable_input,
+                                               txn.inputs)]):
+                if time.time() * TIME_MULTIPLIER - txnw.timestamp > tx.timelock * \
                         TIMELOCK_CONST:
                     return False
                 if txn.seq <= tx.seq:
@@ -151,6 +157,30 @@ class Storage(SyncObj):
                 return True
         return True
 
+    def compare_inputs(self, inputs, inputs2):
+        """
+        Compares two lists of inputs
+        """
+        if not len(inputs) == len(inputs2):
+            return False
+        for i in range(len(inputs)):
+            if not (inputs[i].txid == inputs2[i].txid and inputs[i].index == \
+                    inputs2[i].index):
+                return False
+        return True
+
+    def comparable_input(self, inp):
+        return {
+            'txid': b2hex(inp.txid),
+            'index': inp.index,
+            # 'signature': b2hex(inp.signature),
+            # 'signature2': b2hex(inp.signature2),
+            # 'htlc_preimage': b2hex(inp.htlc_preimage)
+        }
+
+
+
+    @replicated
     def update_pend(self):
         for txid, txnw in self.pend.db:
             txnw = TxnWrapper.unserialize(SerializationBuffer(txnw))
@@ -160,10 +190,17 @@ class Storage(SyncObj):
                         TIMELOCK_CONST:
 
                 self.del_from_pending(txnw.txn)
-                self[txid] = txnw
-                self.add_txn_to_balance_index(txnw.txn, self.pub_outs)
+                if self.verify_txn(txnw.txn, check_pend=False):
+                    self[txid] = txnw
+                    self.add_txn_to_balance_index(txnw.txn, self.pub_outs)
+                    print('Transaction {} was pending and now put in '
+                          'db'.format(b2hex(txid)))
+                else:
+                    print('Transaction {} was pending and could not be '
+                          'written to db, see reason above'.format(b2hex(
+                          txid)))
 
-    def del_from_pending(self,tx):
+    def del_from_pending(self, tx):
         del self.pend[tx.txid]
         for i in range(len(tx.outputs)):
             self.del_out_from_balance_index(tx.outputs[
@@ -273,36 +310,44 @@ class Storage(SyncObj):
             ts = int(time.time() * TIME_MULTIPLIER)
 
             if self.verify_txn(txn):
-                # set all outputs to spent
-                for inp in txn.inputs:
-                    output_txnw = self[inp.txid]
-                    output_txnw.utxos[inp.index] = False
-                    self[inp.txid] = output_txnw
-
-                    #delete output from pub_outs index
-                    self.del_out_from_balance_index(
-                        output_txnw.txn.outputs[inp.index].get_pubkeys(),
-                        inp.txid, inp.index,self.pub_outs)
-
                 #write txn to pend or db depending on timelock
                 if txn.timelock:
                     self.pend[txn.txid] = TxnWrapper(txn, ts)
                     self.add_txn_to_balance_index(txn, self.pub_outs_pend)
+                    for inp in txn.inputs:
+                        output_txnw = self[inp.txid]
+                        # delete output from pub_outs index
+                        self.del_out_from_balance_index(
+                            output_txnw.txn.outputs[inp.index].get_pubkeys(),
+                            inp.txid, inp.index, self.pub_outs)
+                    print('txn {} ACCEPTED(PENDING)\n'.format(b2hex(txid)))
                 else:
-                    # write txn to db
-                    self[txn.txid] = TxnWrapper(txn, ts)
-                    # update index
-                    self.add_txn_to_balance_index(txn, self.pub_outs)
+                    self.write_txn_to_db(txn, ts)
+                    print('txn {} ACCEPTED\n'.format(b2hex(txid)))
 
-                print('txn {} ACCEPTED\n'.format(b2hex(txid)))
 
             self.remove_txn_from_mempool_and_return(txid)
             self.print_balances()
             print('\n')
 
+    def write_txn_to_db(self,txn,ts):
+        # set all outputs to spent
+        for inp in txn.inputs:
+            output_txnw = self[inp.txid]
+            output_txnw.utxos[inp.index] = False
+            self[inp.txid] = output_txnw
 
+            # delete output from pub_outs index
+            self.del_out_from_balance_index(
+                output_txnw.txn.outputs[inp.index].get_pubkeys(),
+                inp.txid, inp.index, self.pub_outs)
 
-    def verify_txn(self, txn):
+        # write txn to db
+        self[txn.txid] = TxnWrapper(txn, ts)
+        # update index
+        self.add_txn_to_balance_index(txn, self.pub_outs)
+
+    def verify_txn(self, txn, check_pend=True):
         txid = txn.txid
         if txid in self:
             print('Trasaction {} is already stored'.format(b2hex(txid)))
@@ -370,12 +415,12 @@ class Storage(SyncObj):
                         txn.txid))
             self.remove_txn_from_mempool_and_return(txid)
             return False
-
-        if not self.check_pend_replacement(txn):
-            print('txn %s tries to replace a txn for which it is not allowed' %
-                  b2hex(txn.txid))
-            self.remove_txn_from_mempool_and_return(txid)
-            return False
+        if check_pend:
+            if not self.check_pend_replacement(txn):
+                print('txn %s tries to replace a txn for which it is not allowed' %
+                      b2hex(txn.txid))
+                self.remove_txn_from_mempool_and_return(txid)
+                return False
 
         return True
 

@@ -37,4 +37,5 @@ class PendingDB(object):
         return self.db.get(key) is not None
 
     def __delitem__(self, key):
+        assert isinstance(key, bytes)
         self.db.delete(key)
