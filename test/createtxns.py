@@ -82,7 +82,7 @@ def generate_htlc_txns2():
     for i in range(5):
         txid = generate_htlc_txns()[i].txid
         txn = Transaction(
-            [Input(txid, 0, htlc_preimage=PREIMAGES[i])],
+            [Input(txid, 0, htlc_preimage=PREIMAGES[0])],
             [Output(100, PUBS[i], PUBS[i])]
         )
         for inp in txn.inputs:

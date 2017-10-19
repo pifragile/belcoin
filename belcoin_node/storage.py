@@ -28,7 +28,7 @@ class Storage(SyncObj):
         self.bcnode = node
         self.db = plyvel.DB(join(expanduser('~/.belcoin'), 'db_'+str(nid)),
                             create_if_missing=True)
-        self.pend = {} #dict of txns that have a timelock to wait for
+        self.pend = [] #list of txns that have a timelock to wait for
 
         #create genesis transaction:
         gentxn = createtxns.genesis_txn()
@@ -72,8 +72,9 @@ class Storage(SyncObj):
         bal = 0
         bal_partial = 0
         bal_htlc = 0
+
         if pubkey not in self.pub_outs:
-            return 0
+            return [0, 0, 0]
 
         for (txid, i) in self.pub_outs[pubkey]:
             txnw = self[txid]
@@ -106,20 +107,21 @@ class Storage(SyncObj):
 
     def check_pend_replacement(self, txn):
         """
-        Returns (x,y)
-        X is True if the txn can be put into pend, be written to the db
+        Returns True if the txn can be put into pend, be written to the db
         respectively
-        y is true if txn is already in pend
+        Assumption: For a txn to be able to replace another one the inputs
+        have to match exactly.
         """
-        in_pend = False
-        for txid, txnw in self.pend:
+        for txnw in self.pend:
             tx = txnw.txn
             if set(txn.inputs) == set(tx.inputs):
-                if time.time() * TIME_MULTIPLIER - tx.ts < tx.timelock * \
+                if time.time() * TIME_MULTIPLIER - tx.ts > tx.timelock * \
                         TIMELOCK_CONST:
-                    if txn.seq <= tx.seq:
-                        return False
-                del self.pend[txid]
+                    return False
+                if txn.seq <= tx.seq:
+                    return False
+                self.pend.remove(txnw)
+                return True
         return True
 
     def get(self, key, default=None):
@@ -234,12 +236,13 @@ class Storage(SyncObj):
                         output_txnw.txn.outputs[inp.index].get_pubkeys(),
                         inp.txid, inp.index)
 
-                if self.check_pend_replacement():
-                    #txn has timelock and needs to wait
-                    pass
+                #write txn to pend or db depending on timelock
+                if txn.timelock:
+                    self.pend.append(TxnWrapper(txn, ts))
                 else:
                     # write txn to db
                     self[txn.txid] = TxnWrapper(txn, ts)
+
 
                 # update index
                 self.add_txn_to_pub_outs(txn)
@@ -268,12 +271,12 @@ class Storage(SyncObj):
                 spent_output = output_txnw.txn.outputs[inp.index]
                 has_coins += spent_output.amount
             except KeyError:
-                    if inp.txid in self.pend:
-                        print("Referenced transaction {} is still "
-                              "locked".format(b2hex(inp.txid)))
-                    else:
-                        print("Invalid input on transaction %s!" % b2hex(
-                            txn.txid))
+                if txn in self.pend:
+                    print('Transaction %s is still locked!' % b2hex(
+                        txn.txid))
+                    print("Invalid input on transaction %s!" % b2hex(
+                        txn.txid))
+                    self.remove_txn_from_mempool_and_return(txid)
                     return False
 
             # verify signatures
@@ -287,6 +290,7 @@ class Storage(SyncObj):
                                        inp.signature2)):
                         print("Invalid signatures on transaction %s!" % b2hex(
                             txn.txid))
+                        self.remove_txn_from_mempool_and_return(txid)
                         return False
 
             #Case that timeout isnt reached yet
@@ -295,24 +299,35 @@ class Storage(SyncObj):
                     print("Preimage doesn't match hashlock on transaction "
                           "%s!" % b2hex(
                         txn.txid))
+                    self.remove_txn_from_mempool_and_return(txid)
                     return False
 
                 if (not verify_sig(txn.txid, spent_output.htlc_pubkey,
                                    inp.signature)):
                         print("Invalid signatures on transaction %s!" % b2hex(
                             txn.txid))
+                        self.remove_txn_from_mempool_and_return(txid)
                         return False
 
             # check if outputs are unspent
             if not output_txnw.utxos[inp.index]:
                     print("Transaction %s uses spent outputs!" % b2hex(
                         txn.txid))
+                    self.remove_txn_from_mempool_and_return(txid)
                     return False
 
 
         spends_coins = sum([out.amount for out in txn.outputs])
         if not has_coins == spends_coins:
-            print('Sum of Output Amounts doesnt equal sum of Input Amounts')
+            print('Sum of Output Amounts doesnt equal sum of Input Amounts in txn %s' % b2hex(
+                        txn.txid))
+            self.remove_txn_from_mempool_and_return(txid)
+            return False
+
+        if not self.check_pend_replacement(txn):
+            print('txn %s tries to replace a txn for which it is not allowed' %
+                  b2hex(txn.txid))
+            self.remove_txn_from_mempool_and_return(txid)
             return False
 
         return True
