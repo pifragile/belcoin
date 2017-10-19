@@ -4,7 +4,8 @@ import json
 import plyvel
 from os.path import join, expanduser
 from belcoin_node.txnwrapper import TxnWrapper
-from belcoin_node.util import PUBS,PRIVS
+from belcoin_node.util import PUBS
+from belcoin_node.pendingdb import PendingDB
 from tesseract.serialize import SerializationBuffer
 from tesseract.transaction import Transaction
 from tesseract.util import b2hex, hex2b
@@ -28,7 +29,8 @@ class Storage(SyncObj):
         self.bcnode = node
         self.db = plyvel.DB(join(expanduser('~/.belcoin'), 'db_'+str(nid)),
                             create_if_missing=True)
-        self.pend = [] #list of txns that have a timelock to wait for
+        self.pend = PendingDB(nid) #db of txns that have a timelock to wait
+
 
         #create genesis transaction:
         gentxn = createtxns.genesis_txn()
@@ -41,43 +43,55 @@ class Storage(SyncObj):
         for txid, txnw in self.db:
             txnw = TxnWrapper.unserialize(SerializationBuffer(txnw))
             txn = txnw.txn
-            self.add_txn_to_pub_outs(txn)
+            self.add_txn_to_balance_index(txn, self.pub_outs)
+
+        #create index pubkey ==> (txid, index) for pending txns
+        self.pub_outs_pend = {}
+        for txid, txnw in self.pend.db:
+            txnw = TxnWrapper.unserialize(SerializationBuffer(txnw))
+            txn = txnw.txn
+            self.add_txn_to_balance_index(txn, self.pub_outs_pend)
 
 
-    def add_txn_to_pub_outs(self,txn):
+    def add_txn_to_balance_index(self, txn, index):
         txid = txn.txid
         for i in range(len(txn.outputs)):
             o = txn.outputs[i]
             for p in o.get_pubkeys():
-                if p in self.pub_outs:
-                        self.pub_outs[p].add((txid, i))
+                if p in index:
+                        index[p].add((txid, i))
                 else:
-                    self.pub_outs[p] = set([(txid, i)])
+                    index[p] = set([(txid, i)])
 
-    def del_out_from_pub_outs(self, pubkeys, txid, index):
+    def del_out_from_balance_index(self, pubkeys, txid, i, index):
+        index_name = "pub_outs" if index == self.pub_outs else "pub_outs_pend"
         for pubkey in pubkeys:
-            if pubkey not in self.pub_outs:
-                print('trying to delete output for a pubkey which doesn\'t exist '
-                      'from pub_outs')
+            if pubkey not in index:
+                print('trying to delete output for a pubkey which doesn\'t '
+                      'exist from ' + index_name)
                 continue
 
             try:
-                self.pub_outs[pubkey].remove((txid, index))
+                index[pubkey].remove((txid, i))
             except KeyError:
-                print('trying to delete output which doesn\'t exist from pub_outs')
-                raise KeyError('trying to delete output which doesn\'t exist from pub_outs')
+                print('trying to delete output which doesn\'t exist from '+
+                      index_name)
+                raise KeyError('trying to delete output which doesn\'t exist '
+                               'from  ' + index_name)
                 continue
 
-    def get_balance(self, pubkey):
+    def get_balance(self, pubkey, index):
         bal = 0
         bal_partial = 0
         bal_htlc = 0
 
-        if pubkey not in self.pub_outs:
+        if pubkey not in index:
             return [0, 0, 0]
 
-        for (txid, i) in self.pub_outs[pubkey]:
-            txnw = self[txid]
+        for (txid, i) in index[pubkey]:
+
+            txnw = self[txid] if index == self.pub_outs else self.pend[txid]
+
             o = txnw.txn.outputs[i]
             #Case timeout reached
             if pubkey in [o.pubkey, o.pubkey2] and time.time() * \
@@ -101,7 +115,19 @@ class Storage(SyncObj):
                                                     'be '
                                                  'provided)']]
         for i in range(len(PUBS)):
-            table_data.append([i] + self.get_balance(PUBS[i]))
+            table_data.append([i] + self.get_balance(PUBS[i],self.pub_outs))
+        table = AsciiTable(table_data)
+        print(table.table)
+
+        print('Balances (pending): ')
+        table_data = [
+            ['Owner','Totally owned', 'Partially owned', 'HTLC (if secret '
+                                                      'can ' \
+                                                    'be '
+                                                 'provided)']]
+        for i in range(len(PUBS)):
+            table_data.append([i] + self.get_balance(PUBS[i],
+                                                     self.pub_outs_pend))
         table = AsciiTable(table_data)
         print(table.table)
 
@@ -112,7 +138,8 @@ class Storage(SyncObj):
         Assumption: For a txn to be able to replace another one the inputs
         have to match exactly.
         """
-        for txnw in self.pend:
+        for txid, txnw in self.pend.db:
+            txnw = TxnWrapper.unserialize(SerializationBuffer(txnw))
             tx = txnw.txn
             if set(txn.inputs) == set(tx.inputs):
                 if time.time() * TIME_MULTIPLIER - tx.ts > tx.timelock * \
@@ -120,9 +147,30 @@ class Storage(SyncObj):
                     return False
                 if txn.seq <= tx.seq:
                     return False
-                self.pend.remove(txnw)
+                self.del_from_pending(tx)
                 return True
         return True
+
+    def update_pend(self):
+        for txid, txnw in self.pend.db:
+            txnw = TxnWrapper.unserialize(SerializationBuffer(txnw))
+            timestamp = txnw.timestamp
+            timelock = txnw.txn.timelock
+            if time.time() * TIME_MULTIPLIER - timestamp > timelock * \
+                        TIMELOCK_CONST:
+
+                self.del_from_pending(txnw.txn)
+                self[txid] = txnw
+                self.add_txn_to_balance_index(txnw.txn, self.pub_outs)
+
+    def del_from_pending(self,tx):
+        del self.pend[tx.txid]
+        for i in range(len(tx.outputs)):
+            self.del_out_from_balance_index(tx.outputs[
+                                                i].get_pubkeys(),
+                                            tx.txid, i,
+                                            self.pub_outs_pend)
+
 
     def get(self, key, default=None):
         """Get an object from storage in a dictionary-like way."""
@@ -232,20 +280,19 @@ class Storage(SyncObj):
                     self[inp.txid] = output_txnw
 
                     #delete output from pub_outs index
-                    self.del_out_from_pub_outs(
+                    self.del_out_from_balance_index(
                         output_txnw.txn.outputs[inp.index].get_pubkeys(),
-                        inp.txid, inp.index)
+                        inp.txid, inp.index,self.pub_outs)
 
                 #write txn to pend or db depending on timelock
                 if txn.timelock:
-                    self.pend.append(TxnWrapper(txn, ts))
+                    self.pend[txn.txid] = TxnWrapper(txn, ts)
+                    self.add_txn_to_balance_index(txn, self.pub_outs_pend)
                 else:
                     # write txn to db
                     self[txn.txid] = TxnWrapper(txn, ts)
-
-
-                # update index
-                self.add_txn_to_pub_outs(txn)
+                    # update index
+                    self.add_txn_to_balance_index(txn, self.pub_outs)
 
                 print('txn {} ACCEPTED\n'.format(b2hex(txid)))
 
@@ -271,7 +318,7 @@ class Storage(SyncObj):
                 spent_output = output_txnw.txn.outputs[inp.index]
                 has_coins += spent_output.amount
             except KeyError:
-                if txn in self.pend:
+                if inp.txid in self.pend:
                     print('Transaction %s is still locked!' % b2hex(
                         txn.txid))
                     print("Invalid input on transaction %s!" % b2hex(
