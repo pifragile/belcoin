@@ -137,12 +137,12 @@ class SyncObj(object):
         consumers = newConsumers
         ###belcoin
         self.__tickctr = 0
-        self.bcnode = None
+        #self.bcnode = None
         self.mempool = []
         self.nid = 0
-        self.db = None
+        #self.db = None
         self.processing = False
-        self.current_block = []
+        #self.current_block = []
         ###
 
         self.__consumers = consumers
@@ -691,7 +691,9 @@ class SyncObj(object):
             self.__onReadyCalled = True
 
         self._checkCommandsToApply()
-        self.__tryLogCompaction()
+
+        ##belcoin disabled log compaction because there is some bug
+        #self.__tryLogCompaction()
 
         for node in self.__nodes:
             node.connectIfRequired()
