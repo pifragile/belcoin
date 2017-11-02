@@ -387,8 +387,9 @@ class Storage(SyncObj):
                     return False
 
                 if (not verify_sig(txn.txid, spent_output.htlc_pubkey,
-                                   inp.signature)):
-                        print("Invalid signatures on transaction %s!" % b2hex(
+                                   inp.htlc_signature)):
+                        print("Invalid htlc signatures on transaction %s!" %
+                              b2hex(
                             txn.txid))
                         self.remove_txn_from_mempool_and_return(txid)
                         return False
