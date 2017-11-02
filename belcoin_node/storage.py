@@ -54,6 +54,10 @@ class Storage(SyncObj):
 
 
     def add_txn_to_balance_index(self, txn, index):
+        """
+        Adds a transaction txn to index index which is either pub_outs or
+        pub_outs_pend
+        """
         txid = txn.txid
         for i in range(len(txn.outputs)):
             o = txn.outputs[i]
@@ -64,6 +68,10 @@ class Storage(SyncObj):
                     index[p] = set([(txid, i)])
 
     def del_out_from_balance_index(self, pubkeys, txid, i, index):
+        """
+        Removes an ouput (txid,i) from index index which is either pub_outs or
+        pub_outs_pend
+        """
         index_name = "pub_outs" if index == self.pub_outs else "pub_outs_pend"
         for pubkey in pubkeys:
             if pubkey not in index:
@@ -79,6 +87,16 @@ class Storage(SyncObj):
                 continue
 
     def get_balance(self, pubkey, index):
+        """
+        Returns the balances bal, bal_partial bal_htlc for a given public
+        key, from a ceratin index (pub_outs or pub_outs_pend)
+
+        bal: balance totally ownded by pubkey
+        bal_partial: balance for transaction where the owner only has one
+        pubkey in the output
+        bal_htlc: balance owned, if the htlc preimage can be provided within
+        the timeout
+        """
         bal = 0
         bal_partial = 0
         bal_htlc = 0
@@ -99,6 +117,7 @@ class Storage(SyncObj):
                 else:
                     bal_partial += o.amount
 
+            #Case time out no reached
             if pubkey == o.htlc_pubkey and time.time() * \
                     TIME_MULTIPLIER - txnw.timestamp < o.htlc_timeout * TIMEOUT_CONST:
                 bal_htlc += o.amount
@@ -106,6 +125,9 @@ class Storage(SyncObj):
         return [bal, bal_partial, bal_htlc]
 
     def print_balances(self):
+        """
+        prints an overview over the balances to terminal
+        """
         print('Balances: ')
         table_data = [
             ['Owner','Totally owned', 'Partially owned', 'HTLC (if secret '
@@ -158,6 +180,9 @@ class Storage(SyncObj):
 
 
     def comparable_input(self, inp):
+        """
+        :return: A hashable form of a given input
+        """
         return {
             'txid': b2hex(inp.txid),
             'index': inp.index,
@@ -170,6 +195,12 @@ class Storage(SyncObj):
 
     @replicated
     def update_pend(self):
+        """
+        Called by the RAFT leader periodically
+        Checks for transactions which were pending (have a timelock) if the
+        timelock exceeded and if yes, check if txn is valid and write to db
+
+        """
         for txid, txnw in self.pend.db:
             txnw = TxnWrapper.unserialize(SerializationBuffer(txnw))
             timestamp = txnw.timestamp
@@ -188,6 +219,9 @@ class Storage(SyncObj):
                           txid)))
 
     def del_from_pending(self, tx):
+        """
+        deletes a txn from the pend db
+        """
         del self.pend[tx.txid]
         for i in range(len(tx.outputs)):
             self.del_out_from_balance_index(tx.outputs[
@@ -207,6 +241,9 @@ class Storage(SyncObj):
         return TxnWrapper.unserialize(SerializationBuffer(val))
 
     def broadcast_txn(self, txn):
+        """
+        Broadcasts a txn to all nodes rpc interfaces
+        """
         if not reactor.running:
             reactor.callWhenRunning(self.broadcast_txn, txn)
             reactor.run()
@@ -215,6 +252,10 @@ class Storage(SyncObj):
                 reactor.callLater(0, self.send_txn, addr, txn)
 
     def send_block(self):
+        """
+        Called by the leader when a new block is ready
+        Creates a block (=List of txn hashes) and initiates RAFT
+        """
         txns = self.mempool[:BLOCK_SIZE]
         block = [item[0] for item in txns]
         self.processing = True
@@ -222,6 +263,11 @@ class Storage(SyncObj):
 
     @replicated
     def find_missing_transactions(self, block):
+        """
+        If some txns were not in the mempool of this node, it sends a request to
+        the leader to get the txn
+        """
+        self.processing = True
         print('received block {}'.format(b2hex(merkle_root(block))))
         self.current_block = block
         missing_txns = []
@@ -235,12 +281,20 @@ class Storage(SyncObj):
             self.process_block(block)
 
     def request_missing_transactions(self, missing_txns):
+        """
+        requests txns from leader
+        """
         for txn in missing_txns:
             self.request_missing_transaction(txn)
         self.process_block(self.current_block)
 
     def request_missing_transaction(self, txnid):
-        # TODO retry if leader is down
+        """
+        Requests one txn from the leader, this request needs to be blocking
+        because one cannot continue with the block until all txns are
+        available
+        """
+        #TODO retry if leader is down
         print('requesting transaction {} from leader'.format(b2hex(txnid)))
         addr = self.bcnode.rpc_peers[self._getLeader()]
 
@@ -269,19 +323,38 @@ class Storage(SyncObj):
 
 
     def transaction_sent(self, value):
+        """
+        Callback to be called after a txn was successfully sent
+        """
         pass #value = 1 if txn was written, 0 if it already existed
 
     def transaction_send_error(self,error):
+        """
+        Callback to be called when an error happened while sending a txn
+        """
         # TODO maybe resend txn
         print(error)
 
     def send_txn(self, addr, txn):
+        """
+        send a txn to addr
+        """
         proxy = Proxy(addr)
         d = proxy.callRemote('puttxn', txn, False)
         d.addCallbacks(self.transaction_sent,
                        self.transaction_send_error)
 
     def process_block(self, block):
+        """
+        Process a block(= list of txn hashes)
+
+        Check if all txns are in mempool (sould always be the case because
+        find_missing_transactions() was called before)
+
+        For all transactions: if it is valid, check if there is a timelock and
+        either write to pend or to db
+
+        """
 
         for txid in block:
             tx = [txn[1] for txn in self.mempool if txn[0] == txid]
@@ -323,6 +396,13 @@ class Storage(SyncObj):
             print('\n')
 
     def write_txn_to_db(self,txn,ts):
+        """
+        writes a txn to db:
+            1. set all outputs to spend
+            2. delete outputs from pub_outs index
+            3. write to db
+            4. update pub_outs index with the outputs of this txn
+        """
         # set all outputs to spent
         for inp in txn.inputs:
             output_txnw = self[inp.txid]
@@ -340,6 +420,24 @@ class Storage(SyncObj):
         self.add_txn_to_balance_index(txn, self.pub_outs)
 
     def verify_txn(self, txn, check_pend=True):
+        """
+        Verifies a txn:
+
+        1. Check if txn already exists in db
+        2. Check if txn is locked by a timelock
+        3. Verify signatures
+            Case 1: HTLC timeout reached
+            Case 2: HTLC timeout not reached
+        4. If check_pend is True, check if there is a conflicting txn in
+        pend( uses the same inputs) and if yes, if it can be replaced.
+        5. Check if the transaction uses spent outputs
+        6. Check if the sum of all input amouts matches the sum of all output amounts
+
+        :param check_pend: True if checks concerning replacements in pend
+        should be performed. Should be set to False if you want to verify
+        txns that are in pend already
+
+        """
         txid = txn.txid
         if txid in self:
             print('Trasaction {} is already stored'.format(b2hex(txid)))
@@ -396,6 +494,10 @@ class Storage(SyncObj):
 
             if check_pend:
                 check = self.check_pend_replacement(txn)
+                # check[0] is True if the transaction is not conflicting
+                # with a transaction in pend which it is not allowd to replace
+                #  or there simply is no conflicting txn in pend
+
                 if not check[0]:
                     print(
                         'txn %s tries to replace a txn for which it is not allowed' %
@@ -403,8 +505,10 @@ class Storage(SyncObj):
                     self.remove_txn_from_mempool_and_return(txid)
                     return False
 
-                #if a matching txn was found, the outputs are already set to
-                # spent
+                #check[1] is true if a conflicting txn was found in pend
+                #if this is the case, the outputs referenced by the inputs of
+                #  theconflicting transaction have already be set to spent
+                # and therefore don't need ti be checked again
                 if not check[1]:
                     # check if outputs are unspent
                     if not output_txnw.utxos[inp.index]:
@@ -420,11 +524,13 @@ class Storage(SyncObj):
                         txn.txid))
             self.remove_txn_from_mempool_and_return(txid)
             return False
-
-
         return True
 
     def remove_txn_from_mempool_and_return(self, txid):
+        """
+        remove a txn from mempool and set processing flag to False to
+        indicate that a new block can be processed
+        """
         self.mempool = [txn for txn in self.mempool if txn[0] != txid]
         self.processing = False
         print('\n')
