@@ -82,11 +82,11 @@ def generate_htlc_txns2():
     for i in range(5):
         txid = generate_htlc_txns()[i].txid
         txn = Transaction(
-            [Input(txid, 0, htlc_preimage=PREIMAGES[0])],
+            [Input(txid, 0, htlc_preimage=PREIMAGES[i])],
             [Output(100, PUBS[i], PUBS[i])]
         )
         for inp in txn.inputs:
-            inp.signature = sign(txn.txid, PRIVS[(i + 1) % 5])
+            inp.htlc_signature = sign(txn.txid, PRIVS[(i + 1) % 5])
         txns.append(txn)
     return txns
 

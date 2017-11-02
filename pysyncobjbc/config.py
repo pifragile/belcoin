@@ -94,7 +94,8 @@ class SyncObjConf(object):
 
         #: Log will be compacted after it reach minEntries size or
         #: minTime after previous compaction.
-        self.logCompactionMinTime = kwargs.get('logCompactionMinTime', 300)
+        self.logCompactionMinTime = kwargs.get('logCompactionMinTime',
+                                               300)#was 300
 
         #: If true - each node will start log compaction in separate time window.
         #: eg. node1 in 12.00-12.10, node2 in 12.10-12.20, node3 12.20 - 12.30,
