@@ -625,6 +625,10 @@ class SyncObj(object):
 
         if self.__raftState == _RAFT_STATE.LEADER:
             ###belcoin
+            print('BOOOOOOOOOOOOOOOO')
+            print(self.__tickctr)
+            print(len(self.mempool))
+
             self.__tickctr += 1
             self.update_pend()
             if (self.__tickctr >= BLOCK_TIMEOUT and len(self.mempool) > 0) or \

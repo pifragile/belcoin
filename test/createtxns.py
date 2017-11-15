@@ -139,6 +139,39 @@ def generate_conflicting_txn_pend():
         inp.signature2 = sign(txn.txid, PRIVS[0])
     return [txn]
 
+
+def generate_many_txns():
+    prev = genesis_txn()
+    txns = []
+    for j in range(1000):
+       txn = Transaction(
+            [Input(prev.txid, 0)],
+            [Output(1000, PUBS[(j + 1) % 2], PUBS[(j + 1) % 2])]
+       )
+       for inp in txn.inputs:
+            inp.signature = sign(txn.txid, PRIVS[j % 2])
+            inp.signature2 = sign(txn.txid, PRIVS[j % 2])
+       txns.append(txn)
+       prev = txn
+
+    return txns
+
+def generate_many_txns2():
+    prev = genesis_txn()
+    txns = []
+    for j in range(1000):
+       txn = Transaction(
+            [Input(prev.txid, 0)],
+            [Output(1000 - 1 - j, PUBS[0], PUBS[0]),
+             Output(1, PUBS[1], PUBS[1])]
+       )
+       for inp in txn.inputs:
+            inp.signature = sign(txn.txid, PRIVS[0])
+            inp.signature2 = sign(txn.txid, PRIVS[0])
+       txns.append(txn)
+       prev = txn
+    return txns
+
 def genesis_txn():
     outputs = [Output(1000, PUBS[i], PUBS[i]) for i in range(5)]
     outputs2 = [Output(500, PUBS[i], PUBS[i]) for i in range(5)]

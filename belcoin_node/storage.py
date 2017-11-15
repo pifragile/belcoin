@@ -256,9 +256,9 @@ class Storage(SyncObj):
         Called by the leader when a new block is ready
         Creates a block (=List of txn hashes) and initiates RAFT
         """
+        self.processing = True
         txns = self.mempool[:BLOCK_SIZE]
         block = [item[0] for item in txns]
-        self.processing = True
         self.find_missing_transactions(block)
 
     @replicated
@@ -295,8 +295,13 @@ class Storage(SyncObj):
         available
         """
         #TODO retry if leader is down
+        #try with twisted: request from everyone, on other side, if not
+        # found, set some flag or shit
         print('requesting transaction {} from leader'.format(b2hex(txnid)))
-        addr = self.bcnode.rpc_peers[self._getLeader()]
+        try:
+            addr = self.bcnode.rpc_peers[self._getLeader()]
+        except KeyError:
+            addr = next(iter(self.bcnode.rpc_peers.values()))
 
         payload = {
             "method": "req_txn",
@@ -456,10 +461,10 @@ class Storage(SyncObj):
                 if inp.txid in self.pend:
                     print('Transaction %s is still locked!' % b2hex(
                         txn.txid))
-                    print("Invalid input on transaction %s!" % b2hex(
-                        txn.txid))
-                    self.remove_txn_from_mempool_and_return(txid)
-                    return False
+                print("Invalid input on transaction %s!" % b2hex(
+                    txn.txid))
+                self.remove_txn_from_mempool_and_return(txid)
+                return False
 
             # verify signatures
             #Case timeout reached

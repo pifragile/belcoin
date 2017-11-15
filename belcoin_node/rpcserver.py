@@ -50,7 +50,7 @@ class RPCServer(jsonrpc.JSONRPC):
         return rval;
 
     def jsonrpc_req_txn(self,txnid,addr):
-        print('Received Request for block {} from {}'.format(txnid,addr))
+        print('Received Request for txn {} from {}'.format(txnid,addr))
         txn = [txn[1] for txn in self.node.storage.mempool if txn[0] == txnid]
         if len(txn) > 0:
             txn = txn[0]
@@ -62,7 +62,7 @@ class RPCServer(jsonrpc.JSONRPC):
                 txn = TxnWrapper.unserialize(SerializationBuffer(txnw)).txn
 
         if txn is None:
-            print('Transaction {} not found!'.format(b2hex(txnid)))
+            print('Transaction {} not found!'.format(txnid))
             return
 
         txn = b2hex(txn.serialize_full().get_bytes())

@@ -17,6 +17,7 @@ class Node(object):
         self.address = self_address
         self.partner_addrs = partner_addrs
         self.rpc_peers = dict(zip(partner_addrs, peers_rpc))#raft addr=>rpc addr
+        print(self.rpc_peers)
 
     def add_node(self, addr):
         self.storage.addNodeToCluster(addr, callback=cb)
@@ -62,6 +63,8 @@ def console(n,nid,rpc_port,addr):
             n.add_node(cmd[1])
         elif cmd[0] == 'status':
             print(n.storage.getStatus())
+        elif cmd[0] == 'mempool':
+            print(n.storage.mempool)
         else:
             continue
 if __name__ == "__main__":
