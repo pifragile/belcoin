@@ -17,7 +17,7 @@ from twisted.internet import reactor
 from txjsonrpc.web.jsonrpc import Proxy
 from terminaltables import AsciiTable
 
-from test import createtxns
+from test import createtxns2 as createtxns
 
 
 class Storage(SyncObj):
@@ -201,6 +201,8 @@ class Storage(SyncObj):
         timelock exceeded and if yes, check if txn is valid and write to db
 
         """
+        #TODO make list ordered and stop when a txn was found, that cant be
+        # written
         for txid, txnw in self.pend.db:
             txnw = TxnWrapper.unserialize(SerializationBuffer(txnw))
             timestamp = txnw.timestamp
@@ -294,26 +296,38 @@ class Storage(SyncObj):
         because one cannot continue with the block until all txns are
         available
         """
-        #TODO retry if leader is down
-        #try with twisted: request from everyone, on other side, if not
-        # found, set some flag or shit
-        print('requesting transaction {} from leader'.format(b2hex(txnid)))
-        try:
-            addr = self.bcnode.rpc_peers[self._getLeader()]
-        except KeyError:
-            addr = next(iter(self.bcnode.rpc_peers.values()))
+        tx = None
+        rpc_peers = list(self.bcnode.rpc_peers.values())
+        i = 0
+        while tx is None:
+            try:
+                addr = self.bcnode.rpc_peers[self._getLeader()]
+            except KeyError:
+                addr = rpc_peers[i % len(rpc_peers)]
+            print('requesting transaction {} from {}'.format(b2hex(txnid),
+                                                             addr))
+            payload = {
+                "method": "req_txn",
+                "params": [b2hex(txnid), self.addr],
+                "jsonrpc": "2.0",
+                "id": 0,
+            }
+            headers = {'content-type': 'application/json'}
+            response = requests.post(
+                addr, data=json.dumps(payload), headers=headers).json()
+            if response['result'] == 0:
+                i += 1
 
-        payload = {
-            "method": "req_txn",
-            "params": [b2hex(txnid), self.addr],
-            "jsonrpc": "2.0",
-            "id": 0,
-        }
-        headers = {'content-type': 'application/json'}
-        response = requests.post(
-            addr, data=json.dumps(payload), headers=headers).json()
+                #check if tx is now in mempool, there can be strange race
+                # conditions when leader changes in a bad moment
+                if i % len(rpc_peers) == 0:
+                    txn_list = [txn for txn in self.mempool if txn[0] == txnid]
+                    if len(txn_list) > 0:
+                        tx = txn_list[0]
+                continue
 
-        tx = Transaction.unserialize_full(SerializationBuffer(hex2b(response['result'])))
+            tx = Transaction.unserialize_full(SerializationBuffer(hex2b(response['result'])))
+            i += 1
         print('node {} received txn {}'.format(self.nid,
                                                b2hex(tx.txid)))
 

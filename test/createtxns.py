@@ -156,6 +156,7 @@ def generate_many_txns():
 
     return txns
 
+#problem is that if txns dont arrive in the specified order, it does not work
 def generate_many_txns2():
     prev = genesis_txn()
     txns = []

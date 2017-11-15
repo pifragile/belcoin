@@ -2,7 +2,7 @@ from twisted.internet import reactor
 from txjsonrpc.web.jsonrpc import Proxy
 from tesseract.transaction import Transaction
 from tesseract.util import b2hex
-from test import createtxns
+from test import createtxns,createtxns2
 from belcoin_node.config import BASE_PORT_RPC
 from random import randint
 import time
@@ -15,10 +15,10 @@ import argparse
 # port = args.port
 k = 0
 b = 0
-test_transactions = createtxns.generate_many_txns2()
-                    #createtxns.generate_htlc_txns() + \
-                    #createtxns.generate_htlc_txns2()
-
+test_transactions =createtxns2.generate_txns()
+                    # createtxns.generate_htlc_txns() + \
+#                   createtxns.generate_htlc_txns2()
+                    #createtxns.generate_txns()
                     #createtxns.generate_pending_txns() +\
                     #createtxns.generate_conflicting_txn_pend()
                     # createtxns.generate_pending_txns2()

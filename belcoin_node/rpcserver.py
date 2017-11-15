@@ -57,13 +57,16 @@ class RPCServer(jsonrpc.JSONRPC):
         else:
             txnw = self.node.storage.db.get(hex2b(txnid))
             if txnw is None:
-                txn = None
+                txnw = self.node.storage.pend.get(hex2b(txnid))
+                if txnw is None:
+                    txn = None
+
             else:
                 txn = TxnWrapper.unserialize(SerializationBuffer(txnw)).txn
 
         if txn is None:
             print('Transaction {} not found!'.format(txnid))
-            return
+            return 0
 
         txn = b2hex(txn.serialize_full().get_bytes())
         return txn
