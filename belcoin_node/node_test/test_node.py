@@ -19,14 +19,17 @@ import gc
 
 
 SO = sys.stdout
-
-
-
+i = 0
 
 class Test_test(TestCase):
 
     def get_time(self):
         return int(time.time() * TIME_MULTIPLIER)
+
+    def busy_wait(self,dt):
+        current_time = time.time()
+        while (time.time() < current_time + dt):
+            pass
 
     def setUp(self):
         try:
@@ -43,13 +46,17 @@ class Test_test(TestCase):
                 pass
             else:
                 raise
-        self.storage = Storage('localhost:12345', [], 0, None)
 
+        global i
+        self.storage = Storage('localhost:{}'.format(str(12345 + i)),
+                               [], i,
+                               None)
+        i += 1
     def tearDown(self):
         try:
             shutil.rmtree(expanduser('~/.belcoin'))
         except Exception:
-            pass
+            print('ERROR123')
 
         self.storage = None
         gc.collect()
@@ -212,5 +219,102 @@ class Test_test(TestCase):
         print(output)
         assert 'spent outputs' in output
 
-#TODO timing stuff, pending txns, assertion that sum of balances is same and
+#TODO timing stuff, assertion that sum of balances is same and
 # other tests on balance indeces
+
+
+    def test_pending_transactions_wrong_seq_num(self):
+        out = io.StringIO()
+        sys.stdout = out
+
+        txn = Transaction(
+            [Input(COINBASE.txid, 0)],
+            [Output(1000, PUBS[1], PUBS[1], 10, HASHLOCKS[0], PUBS[0])],
+            seq=0,
+            timelock=12
+        )
+        for inp in txn.inputs:
+            inp.signature = sign(txn.txid, PRIVS[0])
+            inp.signature2 = sign(txn.txid, PRIVS[0])
+        self.storage.mempool.append((txn.txid, txn))
+        self.storage.process_block([txn.txid])
+
+        txn1 = Transaction(
+            [Input(COINBASE.txid, 0)],
+            [Output(1, PUBS[1], PUBS[1], 10, HASHLOCKS[0], PUBS[0]),
+             Output(999, PUBS[1], PUBS[1], 10, HASHLOCKS[0], PUBS[0])],
+            seq=0,
+            timelock=12
+        )
+        for inp in txn1.inputs:
+            inp.signature = sign(txn1.txid, PRIVS[0])
+            inp.signature2 = sign(txn1.txid, PRIVS[0])
+
+        assert self.storage.verify_txn(txn1) is False
+        output = out.getvalue().strip()
+        assert 'tries to replace a txn for which it' in output
+
+    def test_pending_transactions_too_late(self):
+        out = io.StringIO()
+        sys.stdout = out
+
+        txn = Transaction(
+            [Input(COINBASE.txid, 0)],
+            [Output(1000, PUBS[1], PUBS[1], 10, HASHLOCKS[0], PUBS[0])],
+            seq=0,
+            timelock=3
+        )
+        for inp in txn.inputs:
+            inp.signature = sign(txn.txid, PRIVS[0])
+            inp.signature2 = sign(txn.txid, PRIVS[0])
+        self.storage.mempool.append((txn.txid, txn))
+        self.storage.process_block([txn.txid])
+
+        self.busy_wait(5)
+
+        txn1 = Transaction(
+            [Input(COINBASE.txid, 0)],
+            [Output(1, PUBS[1], PUBS[1], 10, HASHLOCKS[0], PUBS[0]),
+             Output(999, PUBS[1], PUBS[1], 10, HASHLOCKS[0], PUBS[0])],
+            seq=0,
+            timelock=3
+        )
+        for inp in txn1.inputs:
+            inp.signature = sign(txn1.txid, PRIVS[0])
+            inp.signature2 = sign(txn1.txid, PRIVS[0])
+
+        assert self.storage.verify_txn(txn1) is False
+        output = out.getvalue().strip()
+        assert 'spent outputs' in output
+
+    def test_pending_transactions_ok(self):
+        out = io.StringIO()
+        sys.stdout = out
+
+        txn = Transaction(
+            [Input(COINBASE.txid, 0)],
+            [Output(1000, PUBS[1], PUBS[1], 10, HASHLOCKS[0], PUBS[0])],
+            seq=0,
+            timelock=3
+        )
+        for inp in txn.inputs:
+            inp.signature = sign(txn.txid, PRIVS[0])
+            inp.signature2 = sign(txn.txid, PRIVS[0])
+        self.storage.mempool.append((txn.txid, txn))
+        self.storage.process_block([txn.txid])
+
+        self.busy_wait(2)
+
+        txn1 = Transaction(
+            [Input(COINBASE.txid, 0)],
+            [Output(1, PUBS[1], PUBS[1], 10, HASHLOCKS[0], PUBS[0]),
+             Output(999, PUBS[1], PUBS[1], 10, HASHLOCKS[0], PUBS[0])],
+            seq=2,
+            timelock=3
+        )
+        for inp in txn1.inputs:
+            inp.signature = sign(txn1.txid, PRIVS[0])
+            inp.signature2 = sign(txn1.txid, PRIVS[0])
+
+        assert self.storage.verify_txn(txn1)
+
