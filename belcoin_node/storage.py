@@ -1,3 +1,5 @@
+import sys
+import os
 import time
 import requests
 import json
@@ -6,6 +8,7 @@ from os.path import join, expanduser
 from belcoin_node.txnwrapper import TxnWrapper
 from belcoin_node.util import PUBS
 from belcoin_node.pendingdb import PendingDB
+from belcoin_node.config import VERBOSE, COINBASE
 from tesseract.serialize import SerializationBuffer
 from tesseract.transaction import Transaction,Input
 from tesseract.util import b2hex, hex2b
@@ -16,8 +19,6 @@ from belcoin_node.config import BLOCK_SIZE, TIME_MULTIPLIER, TIMEOUT_CONST, TIME
 from twisted.internet import reactor
 from txjsonrpc.web.jsonrpc import Proxy
 from terminaltables import AsciiTable
-
-from test import createtxns2 as createtxns
 
 
 class Storage(SyncObj):
@@ -31,9 +32,8 @@ class Storage(SyncObj):
                             create_if_missing=True)
         self.pend = PendingDB(nid) #db of txns that have a timelock to wait
 
-
         #create genesis transaction:
-        gentxn = createtxns.genesis_txn()
+        gentxn = COINBASE
         if not gentxn.txid in self:
             self[gentxn.txid] = TxnWrapper(
                 gentxn, 0)
@@ -75,15 +75,17 @@ class Storage(SyncObj):
         index_name = "pub_outs" if index == self.pub_outs else "pub_outs_pend"
         for pubkey in pubkeys:
             if pubkey not in index:
-                print('trying to delete output for a pubkey which doesn\'t '
-                      'exist from ' + index_name)
+                if VERBOSE:
+                    print('trying to delete output for a pubkey which doesn\'t '
+                          'exist from ' + index_name)
                 continue
 
             try:
                 index[pubkey].remove((txid, i))
             except KeyError:
-                print('trying to delete output which doesn\'t exist from '+
-                      index_name)
+                if VERBOSE:
+                    print('trying to delete output which doesn\'t exist from '+
+                          index_name)
                 continue
 
     def get_balance(self, pubkey, index):
@@ -213,12 +215,14 @@ class Storage(SyncObj):
                 self.del_from_pending(txnw.txn)
                 if self.verify_txn(txnw.txn, check_pend=False):
                     self.write_txn_to_db(txnw.txn, timestamp)
-                    print('Transaction {} was pending and now put in '
-                          'db'.format(b2hex(txid)))
+                    if VERBOSE:
+                        print('Transaction {} was pending and now put in '
+                              'db'.format(b2hex(txid)))
                 else:
-                    print('Transaction {} was pending and could not be '
-                          'written to db, see reason above'.format(b2hex(
-                          txid)))
+                    if VERBOSE:
+                        print('Transaction {} was pending and could not be '
+                              'written to db, see reason above'.format(b2hex(
+                              txid)))
 
     def del_from_pending(self, tx):
         """
@@ -270,7 +274,8 @@ class Storage(SyncObj):
         the leader to get the txn
         """
         self.processing = True
-        print('received block {}'.format(b2hex(merkle_root(block))))
+        if VERBOSE:
+            print('received block {}'.format(b2hex(merkle_root(block))))
         self.current_block = block
         missing_txns = []
         for txid in block:
@@ -304,8 +309,9 @@ class Storage(SyncObj):
                 addr = self.bcnode.rpc_peers[self._getLeader()]
             except KeyError:
                 addr = rpc_peers[i % len(rpc_peers)]
-            print('requesting transaction {} from {}'.format(b2hex(txnid),
-                                                             addr))
+            if VERBOSE:
+                print('requesting transaction {} from {}'.format(b2hex(txnid),
+                                                                 addr))
             payload = {
                 "method": "req_txn",
                 "params": [b2hex(txnid), self.addr],
@@ -328,17 +334,20 @@ class Storage(SyncObj):
 
             tx = Transaction.unserialize_full(SerializationBuffer(hex2b(response['result'])))
             i += 1
-        print('node {} received txn {}'.format(self.nid,
-                                               b2hex(tx.txid)))
+        if VERBOSE:
+            print('node {} received txn {}'.format(self.nid,
+                                                   b2hex(tx.txid)))
 
         if len([txn for txn in self.mempool if txn[0] ==
                 tx.txid]) == 0:
             self.mempool.append((tx.txid, tx))
-            print('Txn {} put in mempool on node {}.'.format(b2hex(
-                tx.txid), self.nid))
+            if VERBOSE:
+                print('Txn {} put in mempool on node {}.'.format(b2hex(
+                    tx.txid), self.nid))
         else:
-            print('Txn {} already in mempool on node {}.'.format(
-                b2hex(tx.txid), self.nid))
+            if VERBOSE:
+                print('Txn {} already in mempool on node {}.'.format(
+                    b2hex(tx.txid), self.nid))
 
 
     def transaction_sent(self, value):
@@ -404,15 +413,21 @@ class Storage(SyncObj):
                         self.del_out_from_balance_index(
                             output_txnw.txn.outputs[inp.index].get_pubkeys(),
                             inp.txid, inp.index, self.pub_outs)
-                    print('txn {} ACCEPTED(PENDING)\n'.format(b2hex(txid)))
+                    if VERBOSE:
+                        print('txn {} ACCEPTED(PENDING)\n'.format(b2hex(txid)))
                 else:
                     self.write_txn_to_db(txn, ts)
-                    print('txn {} ACCEPTED\n'.format(b2hex(txid)))
+                    if VERBOSE:
+                        print('txn {} ACCEPTED\n'.format(b2hex(txid)))
 
 
             self.remove_txn_from_mempool_and_return(txid)
-            self.print_balances()
-            print('\n')
+            if VERBOSE:
+                self.print_balances()
+                print('\n')
+        print('finished block {}'.format(b2hex(merkle_root(block))))
+        self.processing = False
+
 
     def write_txn_to_db(self,txn,ts):
         """
@@ -459,7 +474,8 @@ class Storage(SyncObj):
         """
         txid = txn.txid
         if txid in self:
-            print('Trasaction {} is already stored'.format(b2hex(txid)))
+            if VERBOSE:
+                print('Trasaction {} is already stored'.format(b2hex(txid)))
             self.remove_txn_from_mempool_and_return(txid)
             return False
 
@@ -469,14 +485,24 @@ class Storage(SyncObj):
                 continue
             try:
                 output_txnw = self[inp.txid]
-                spent_output = output_txnw.txn.outputs[inp.index]
+                try:
+                    spent_output = output_txnw.txn.outputs[inp.index]
+                except IndexError:
+                    if VERBOSE:
+                        print("Invalid input on transaction %s (input "
+                              "index out of bounds)!" % b2hex(
+                            txn.txid))
+                    self.remove_txn_from_mempool_and_return(txid)
+                    return False
                 has_coins += spent_output.amount
             except KeyError:
                 if inp.txid in self.pend:
-                    print('Transaction %s is still locked!' % b2hex(
+                    if VERBOSE:
+                        print('Transaction %s is still locked!' % b2hex(
+                            txn.txid))
+                if VERBOSE:
+                    print("Invalid input on transaction %s!" % b2hex(
                         txn.txid))
-                print("Invalid input on transaction %s!" % b2hex(
-                    txn.txid))
                 self.remove_txn_from_mempool_and_return(txid)
                 return False
 
@@ -489,25 +515,28 @@ class Storage(SyncObj):
                                    inp.signature) or
                         not verify_sig(txn.txid, spent_output.pubkey2,
                                        inp.signature2)):
-                        print("Invalid signatures on transaction %s!" % b2hex(
-                            txn.txid))
+                        if VERBOSE:
+                            print("Invalid signatures on transaction %s!" % b2hex(
+                                txn.txid))
                         self.remove_txn_from_mempool_and_return(txid)
                         return False
 
             #Case that timeout isnt reached yet
             else:
                 if not sha256(inp.htlc_preimage) == spent_output.htlc_hashlock:
-                    print("Preimage doesn't match hashlock on transaction "
-                          "%s!" % b2hex(
-                        txn.txid))
+                    if VERBOSE:
+                        print("Preimage doesn't match hashlock on transaction "
+                              "%s!" % b2hex(
+                            txn.txid))
                     self.remove_txn_from_mempool_and_return(txid)
                     return False
 
                 if (not verify_sig(txn.txid, spent_output.htlc_pubkey,
                                    inp.htlc_signature)):
-                        print("Invalid htlc signatures on transaction %s!" %
-                              b2hex(
-                            txn.txid))
+                        if VERBOSE:
+                            print("Invalid htlc signatures on transaction %s!" %
+                                  b2hex(
+                                txn.txid))
                         self.remove_txn_from_mempool_and_return(txid)
                         return False
 
@@ -518,9 +547,10 @@ class Storage(SyncObj):
                 #  or there simply is no conflicting txn in pend
 
                 if not check[0]:
-                    print(
-                        'txn %s tries to replace a txn for which it is not allowed' %
-                        b2hex(txn.txid))
+                    if VERBOSE:
+                        print(
+                            'txn %s tries to replace a txn for which it is not allowed' %
+                            b2hex(txn.txid))
                     self.remove_txn_from_mempool_and_return(txid)
                     return False
 
@@ -531,28 +561,29 @@ class Storage(SyncObj):
                 if not check[1]:
                     # check if outputs are unspent
                     if not output_txnw.utxos[inp.index]:
-                            print("Transaction %s uses spent outputs!" % b2hex(
-                                txn.txid))
+                            if VERBOSE:
+                                print("Transaction %s uses spent outputs!" % b2hex(
+                                    txn.txid))
                             self.remove_txn_from_mempool_and_return(txid)
                             return False
 
 
         spends_coins = sum([out.amount for out in txn.outputs])
         if not has_coins == spends_coins:
-            print('Sum of Output Amounts doesnt equal sum of Input Amounts in txn %s' % b2hex(
-                        txn.txid))
+            if VERBOSE:
+                print('Sum of Output Amounts doesnt equal sum of Input Amounts in txn %s' % b2hex(
+                            txn.txid))
             self.remove_txn_from_mempool_and_return(txid)
             return False
         return True
 
     def remove_txn_from_mempool_and_return(self, txid):
         """
-        remove a txn from mempool and set processing flag to False to
-        indicate that a new block can be processed
+        remove a txn from mempool
         """
         self.mempool = [txn for txn in self.mempool if txn[0] != txid]
-        self.processing = False
-        print('\n')
+        if VERBOSE:
+            print('\n')
 
 
     def __getitem__(self, key):

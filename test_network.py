@@ -14,8 +14,11 @@ args = parser.parse_args()
 num_nodes = args.num_nodes
 
 # if flag is set, erase all databases
-if args.erase:
-    shutil.rmtree(expanduser('~/.belcoin'))
+try:
+    if args.erase:
+        shutil.rmtree(expanduser('~/.belcoin'))
+except Exception:
+    pass
 
 #create directory for databases
 try:

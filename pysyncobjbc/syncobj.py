@@ -3,6 +3,7 @@ from tesseract.transaction import Transaction
 from tesseract.util import b2hex, hex2b
 from tesseract.serialize import SerializationBuffer
 from belcoin_node.txnwrapper import TxnWrapper
+from belcoin_node.config import VERBOSE
 ###
 
 import time
@@ -632,7 +633,8 @@ class SyncObj(object):
                             len(self.mempool) >= BLOCK_SIZE:
 
                 if not self.processing:
-                    print('Sending a block to my friends...')
+                    if VERBOSE:
+                        print('Sending a block to my friends...')
                     self.send_block()
                     self.__tickctr = 0
             ###

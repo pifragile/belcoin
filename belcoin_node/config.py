@@ -1,3 +1,4 @@
+from test import createtxns,createtxns2
 BASE_PORT = 27870
 BASE_PORT_RPC = 7080
 
@@ -7,3 +8,7 @@ BLOCK_SIZE = 10 #in transactions
 TIME_MULTIPLIER = 1000000000
 TIMEOUT_CONST = 1000000000
 TIMELOCK_CONST = 1000000000
+
+VERBOSE = True
+
+COINBASE = createtxns.genesis_txn()

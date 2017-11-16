@@ -3,7 +3,7 @@ from txjsonrpc.web.jsonrpc import Proxy
 from tesseract.transaction import Transaction
 from tesseract.util import b2hex
 from test import createtxns,createtxns2
-from belcoin_node.config import BASE_PORT_RPC
+from belcoin_node.config import BASE_PORT_RPC, VERBOSE
 from random import randint
 import time
 import argparse
@@ -15,7 +15,8 @@ import argparse
 # port = args.port
 k = 0
 b = 0
-test_transactions =createtxns2.generate_txns()
+test_transactions = createtxns2.generate_txns() + \
+                    createtxns2.generate_txns2()
                     # createtxns.generate_htlc_txns() + \
 #                   createtxns.generate_htlc_txns2()
                     #createtxns.generate_txns()
@@ -32,13 +33,16 @@ num_bal = 0
 
 
 
+
 def printValue(value):
-    print("Result: %s" % str(value))
+    if VERBOSE:
+        print("Result: %s" % str(value))
 
 
 
 def printError(error):
-    print ('error', error)
+    if VERBOSE:
+        print ('error', error)
 
 def cont_txn(data):
     global num_txns
@@ -63,8 +67,9 @@ def cont_bal(data):
 
 def call_txn(port,txn):
     proxy = Proxy('http://127.0.0.1:' + str(port) + '/')
-    print('###Sending test transaction to ' + '127.0.0.1:' + str(
-        port) + '/')
+    if VERBOSE:
+        print('###Sending test transaction to ' + '127.0.0.1:' + str(
+            port) + '/')
 
     d = proxy.callRemote('puttxn', txn, True)
     d.addCallbacks(printValue, printError).addBoth(cont_txn)
@@ -73,8 +78,9 @@ def call_txn(port,txn):
 def call_bal(port):
     try:
         proxy = Proxy('http://127.0.0.1:' + str(port) + '/')
-        print('###Send request to print balances to ' + '127.0.0.1:' + str(
-        port) + '/')
+        if VERBOSE:
+            print('###Send request to print balances to ' + '127.0.0.1:' + str(
+            port) + '/')
 
         d = proxy.callRemote('print_balances')
         d.addCallbacks(printValue, printError).addBoth(cont_bal)
@@ -132,8 +138,6 @@ def print_balances():
     if b < 4:
         reactor.callLater(0, call_bal, BASE_PORT_RPC + b)
         b += 1
-
-
 
 print('This is the client! Usage:')
 print('>> set port key value')
