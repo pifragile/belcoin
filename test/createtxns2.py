@@ -34,6 +34,30 @@ def generate_txns2():
         txns.append(txn)
     return txns
 
+
+def generate_many_txns():
+    txns = []
+    all_txns = []
+    prev_txns = generate_txns()
+    for j in range(10):
+        for i in range(len(PUBS)):
+            txid = prev_txns[i].txid
+            txn = Transaction(
+                [Input(txid, i)],
+                [Output(1, PUBS[(i+1) % len(PUBS)], PUBS[(i+1) % len(PUBS)]),
+                 Output(999 - j, PUBS[i], PUBS[i])]
+            )
+            for inp in txn.inputs:
+                inp.signature = sign(txn.txid, PRIVS[i])
+                inp.signature2 = sign(txn.txid, PRIVS[i])
+            txns.append(txn)
+        prev_txns = txns
+        all_txns.append(txns)
+        txns = []
+
+    return [item for sublist in all_txns for item in sublist]
+
+
 def genesis_txn():
     outputs = [Output(1000, PUBS[i], PUBS[i]) for i in range(len(PUBS))]
     return Transaction([], outputs)

@@ -317,4 +317,3 @@ class Test_test(TestCase):
             inp.signature2 = sign(txn1.txid, PRIVS[0])
 
         assert self.storage.verify_txn(txn1)
-
