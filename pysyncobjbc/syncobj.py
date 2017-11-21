@@ -143,7 +143,9 @@ class SyncObj(object):
         self.nid = 0
         #self.db = None
         self.processing = False
-        #self.current_block = []
+        self.leader_processing = False
+        self.adding_block = False
+        self.current_block = []
         ###
 
         self.__consumers = consumers
@@ -632,7 +634,8 @@ class SyncObj(object):
             if (self.__tickctr >= BLOCK_TIMEOUT and len(self.mempool) > 0) or \
                             len(self.mempool) >= BLOCK_SIZE:
 
-                if not self.processing:
+                if not self.leader_processing and not self.adding_block:
+                    self.leader_processing = True
                     if VERBOSE:
                         print('Sending a block to my friends...')
                     self.send_block()

@@ -19,7 +19,7 @@ from belcoin_node.config import BLOCK_SIZE, TIME_MULTIPLIER, TIMEOUT_CONST, TIME
 from twisted.internet import reactor
 from txjsonrpc.web.jsonrpc import Proxy
 from terminaltables import AsciiTable
-import asyncio
+
 
 
 class Storage(SyncObj):
@@ -34,6 +34,7 @@ class Storage(SyncObj):
         self.pend = PendingDB(nid) #db of txns that have a timelock to wait
         self.txns_processed = 0
         self.missing_txns = []
+        self.block_queue = []
 
         #create genesis transaction:
         gentxn = COINBASE
@@ -257,26 +258,54 @@ class Storage(SyncObj):
             reactor.callWhenRunning(self.broadcast_txn, txn)
             reactor.run()
         else:
-            for addr in list(self.bcnode.rpc_peers.values())[:2]:
+            for addr in list(self.bcnode.rpc_peers.values()):#[:2]:
                 reactor.callLater(0, self.send_txn, addr, txn)
+
 
     def send_block(self):
         """
         Called by the leader when a new block is ready
         Creates a block (=List of txn hashes) and initiates RAFT
         """
-        self.processing = True
         txns = self.mempool[:BLOCK_SIZE]
         block = [item[0] for item in txns]
-        self.find_missing_transactions(block)
+        #if set(block) not in map(set, self.block_queue):
+        if set(block) != set(self.current_block):
+            self.add_block_to_queue(block)
+
+    def try_process(self):
+        if not self.processing:
+            if len(self.block_queue) > 0:
+                block = self.block_queue[0]
+                self.processing = True
+                self.leader_processing = True
+                self.find_missing_transactions(block)
+                del self.block_queue[0]
+                self.processing = False
+                self.leader_processing = False
 
     @replicated
+    def add_block_to_queue(self, block):
+        if self._isLeader():
+            print('Leader')
+        self.adding_block = True
+        #if set(block) not in map(set, self.block_queue):
+        if set(block) != set(self.current_block):
+            if VERBOSE:
+                print('received block {}'.format(b2hex(merkle_root(block))))
+            self.block_queue.append(block)
+        self.adding_block = False
+
+        self.try_process()
+
+
+
+    #@replicated
     def find_missing_transactions(self, block):
         """
         If some txns were not in the mempool of this node, it sends a request to
         the leader to get the txn
         """
-        self.processing = True
         if VERBOSE:
             print('received block {}'.format(b2hex(merkle_root(block))))
         self.current_block = block
@@ -390,8 +419,9 @@ class Storage(SyncObj):
         i += 1
         rpc_peers = list(self.bcnode.rpc_peers.values())
         addr = rpc_peers[i % len(rpc_peers)]
-        print('requesting transaction {} from {}'.format(b2hex(txid),
-                                                                  addr))
+        if VERBOSE:
+            print('requesting transaction {} from {}'.format(b2hex(txid),
+                                                                      addr))
         proxy = Proxy(addr)
         d = proxy.callRemote('req_txn', b2hex(txid), self.addr)
         d.addCallback(self.transaction_received, i=i, txid=txid)
@@ -478,9 +508,9 @@ class Storage(SyncObj):
             if VERBOSE:
                 self.print_balances()
                 print('\n')
+
         print('finished block {}'.format(b2hex(merkle_root(block))))
         print('txns processed : {}'.format(str(self.txns_processed)))
-        self.processing = False
 
 
     def write_txn_to_db(self,txn,ts):

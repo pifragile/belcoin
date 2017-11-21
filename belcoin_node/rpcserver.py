@@ -53,7 +53,8 @@ class RPCServer(jsonrpc.JSONRPC):
                 print('Broadcasting transaction {}'.format(b2hex(
                     tx.txid)))
             self.node.storage.broadcast_txn(b2hex(t))
-        return rval;
+        self.node.storage.try_process()
+        return rval
 
     def jsonrpc_req_txn(self,txnid,addr):
         if VERBOSE:

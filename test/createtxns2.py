@@ -9,8 +9,8 @@ def generate_txns():
     for i in range(len(PUBS)):
         txn = Transaction(
             [Input(txid, i)],
-            [Output(100, PUBS[(i+1) % 100], PUBS[(i+1) % 100]),
-             Output(900, PUBS[i], PUBS[i])]
+            [Output(1, PUBS[(i+1) % 100], PUBS[(i+1) % 100]),
+             Output(999, PUBS[i], PUBS[i])]
         )
         for inp in txn.inputs:
             inp.signature = sign(txn.txid, PRIVS[i])
@@ -40,12 +40,12 @@ def generate_many_txns():
     all_txns = []
     prev_txns = generate_txns()
     for j in range(10):
-        for i in range(len(PUBS)):
+        for i in range(len(prev_txns)):
             txid = prev_txns[i].txid
             txn = Transaction(
-                [Input(txid, i)],
+                [Input(txid, 1)],
                 [Output(1, PUBS[(i+1) % len(PUBS)], PUBS[(i+1) % len(PUBS)]),
-                 Output(999 - j, PUBS[i], PUBS[i])]
+                 Output(998 - j, PUBS[i], PUBS[i])]
             )
             for inp in txn.inputs:
                 inp.signature = sign(txn.txid, PRIVS[i])

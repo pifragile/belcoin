@@ -15,7 +15,8 @@ import argparse
 # port = args.port
 k = 0
 b = 0
-test_transactions = createtxns2.generate_txns() #+ \
+test_transactions = createtxns2.generate_txns() + \
+                    createtxns2.generate_many_txns() #+ \
                     #createtxns2.generate_txns2()
                     # createtxns.generate_htlc_txns() + \
 #                   createtxns.generate_htlc_txns2()
