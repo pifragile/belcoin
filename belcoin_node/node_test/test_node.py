@@ -226,7 +226,7 @@ class Test_test(TestCase):
     def test_pending_transactions_wrong_seq_num(self):
         out = io.StringIO()
         sys.stdout = out
-
+        self.storage.current_time = time.time()
         txn = Transaction(
             [Input(COINBASE.txid, 0)],
             [Output(1000, PUBS[1], PUBS[1], 10, HASHLOCKS[0], PUBS[0])],
@@ -238,6 +238,7 @@ class Test_test(TestCase):
             inp.signature2 = sign(txn.txid, PRIVS[0])
         self.storage.mempool.append((txn.txid, txn))
         self.storage.process_block([txn.txid])
+        self.storage.current_time = time.time()
 
         txn1 = Transaction(
             [Input(COINBASE.txid, 0)],
@@ -257,7 +258,7 @@ class Test_test(TestCase):
     def test_pending_transactions_too_late(self):
         out = io.StringIO()
         sys.stdout = out
-
+        self.storage.current_time = time.time()
         txn = Transaction(
             [Input(COINBASE.txid, 0)],
             [Output(1000, PUBS[1], PUBS[1], 10, HASHLOCKS[0], PUBS[0])],
@@ -271,12 +272,13 @@ class Test_test(TestCase):
         self.storage.process_block([txn.txid])
 
         self.busy_wait(5)
-
+        self.storage.current_time = time.time()
+        self.storage.update_pend()
         txn1 = Transaction(
             [Input(COINBASE.txid, 0)],
             [Output(1, PUBS[1], PUBS[1], 10, HASHLOCKS[0], PUBS[0]),
              Output(999, PUBS[1], PUBS[1], 10, HASHLOCKS[0], PUBS[0])],
-            seq=0,
+            seq=1,
             timelock=3
         )
         for inp in txn1.inputs:
@@ -290,7 +292,7 @@ class Test_test(TestCase):
     def test_pending_transactions_ok(self):
         out = io.StringIO()
         sys.stdout = out
-
+        self.storage.current_time = time.time()
         txn = Transaction(
             [Input(COINBASE.txid, 0)],
             [Output(1000, PUBS[1], PUBS[1], 10, HASHLOCKS[0], PUBS[0])],
@@ -305,6 +307,7 @@ class Test_test(TestCase):
 
         self.busy_wait(2)
 
+        self.storage.current_time = time.time()
         txn1 = Transaction(
             [Input(COINBASE.txid, 0)],
             [Output(1, PUBS[1], PUBS[1], 10, HASHLOCKS[0], PUBS[0]),

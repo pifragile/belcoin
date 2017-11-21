@@ -200,7 +200,8 @@ class Storage(SyncObj):
 
 
 
-    @replicated
+    #TODO check if should be replicated or not
+    #@replicated
     def update_pend(self):
         """
         Called by the RAFT leader periodically
