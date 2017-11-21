@@ -35,6 +35,7 @@ class Storage(SyncObj):
         self.txns_processed = 0
         self.missing_txns = []
         self.block_queue = []
+        self.current_time = 0
 
         #create genesis transaction:
         gentxn = COINBASE
@@ -116,7 +117,7 @@ class Storage(SyncObj):
 
             o = txnw.txn.outputs[i]
             #Case timeout reached
-            if pubkey in [o.pubkey, o.pubkey2] and time.time() * \
+            if pubkey in [o.pubkey, o.pubkey2] and self.current_time * \
                     TIME_MULTIPLIER - txnw.timestamp >= o.htlc_timeout * TIMEOUT_CONST:
                 if o.pubkey == o.pubkey2:
                     bal += o.amount
@@ -124,7 +125,7 @@ class Storage(SyncObj):
                     bal_partial += o.amount
 
             #Case time out no reached
-            if pubkey == o.htlc_pubkey and time.time() * \
+            if pubkey == o.htlc_pubkey and self.current_time * \
                     TIME_MULTIPLIER - txnw.timestamp < o.htlc_timeout * TIMEOUT_CONST:
                 bal_htlc += o.amount
 
@@ -175,7 +176,7 @@ class Storage(SyncObj):
                                                tx.inputs)])\
                 == set([str(inp) for inp in map(self.comparable_input,
                                                txn.inputs)]):
-                if time.time() * TIME_MULTIPLIER - txnw.timestamp > tx.timelock * \
+                if self.current_time * TIME_MULTIPLIER - txnw.timestamp > tx.timelock * \
                         TIMELOCK_CONST:
                     return False, True
                 if txn.seq <= tx.seq:
@@ -213,7 +214,7 @@ class Storage(SyncObj):
             txnw = TxnWrapper.unserialize(SerializationBuffer(txnw))
             timestamp = txnw.timestamp
             timelock = txnw.txn.timelock
-            if time.time() * TIME_MULTIPLIER - timestamp > timelock * \
+            if self.current_time * TIME_MULTIPLIER - timestamp > timelock * \
                         TIMELOCK_CONST:
 
                 self.del_from_pending(txnw.txn)
@@ -268,7 +269,8 @@ class Storage(SyncObj):
         Creates a block (=List of txn hashes) and initiates RAFT
         """
         txns = self.mempool[:BLOCK_SIZE]
-        block = [item[0] for item in txns]
+        now = time.time() if time.time() > self.current_time else self.current_block
+        block = {'time': now, 'txns' : [item[0] for item in txns]}
         #if set(block) not in map(set, self.block_queue):
         if set(block) != set(self.current_block):
             self.add_block_to_queue(block)
@@ -290,12 +292,14 @@ class Storage(SyncObj):
             print('Leader')
         self.adding_block = True
         #if set(block) not in map(set, self.block_queue):
+        self.current_time = block['time']
+        self.update_pend()
+        block = block['txns']
         if set(block) != set(self.current_block):
             if VERBOSE:
                 print('received block {}'.format(b2hex(merkle_root(block))))
             self.block_queue.append(block)
         self.adding_block = False
-
         self.try_process()
 
 
@@ -477,7 +481,7 @@ class Storage(SyncObj):
                     "COLLISION OOOHHH MYYYY GOOOOD".format(self.nid))
             txn = tx[0]
 
-            ts = int(time.time() * TIME_MULTIPLIER)
+            ts = int(self.current_time * TIME_MULTIPLIER)
 
             if self.verify_txn(txn):
                 #write txn to pend or db depending on timelock
@@ -592,7 +596,7 @@ class Storage(SyncObj):
 
             # verify signatures
             #Case timeout reached
-            if time.time() * TIME_MULTIPLIER - output_txnw.timestamp >= \
+            if self.current_time * TIME_MULTIPLIER - output_txnw.timestamp >= \
                     spent_output.htlc_timeout * TIMEOUT_CONST:
                 #Check pubkey and pubkey2
                 if (not verify_sig(txn.txid, spent_output.pubkey,

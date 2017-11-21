@@ -118,7 +118,7 @@ def generate_pending_txns2():
              Output(50, PUBS[i], PUBS[i])
              ],
             seq=1,
-            timelock=10
+            timelock=5
         )
         for inp in txn.inputs:
             inp.signature = sign(txn.txid, PRIVS[i])

@@ -630,7 +630,7 @@ class SyncObj(object):
             ###belcoin
 
             self.__tickctr += 1
-            self.update_pend()
+            #self.update_pend()
             if (self.__tickctr >= BLOCK_TIMEOUT and len(self.mempool) > 0) or \
                             len(self.mempool) >= BLOCK_SIZE:
 

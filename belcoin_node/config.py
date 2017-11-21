@@ -3,12 +3,12 @@ BASE_PORT = 27870
 BASE_PORT_RPC = 7080
 
 BLOCK_TIMEOUT = 1000000000 #in ticks
-BLOCK_SIZE = 100 #in transactions
+BLOCK_SIZE = 5 #in transactions
 
 TIME_MULTIPLIER = 1000000000
 TIMEOUT_CONST = 1000000000
 TIMELOCK_CONST = 1000000000
 
-VERBOSE = False
+VERBOSE = True
 
-COINBASE = createtxns2.genesis_txn()
+COINBASE = createtxns.genesis_txn()
