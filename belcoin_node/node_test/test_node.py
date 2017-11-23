@@ -8,6 +8,7 @@ import errno
 
 import sys
 
+from belcoin_node.node import Node
 from belcoin_node.storage import Storage
 from belcoin_node.util import PUBS,PRIVS,HASHLOCKS,PREIMAGES
 from belcoin_node.config import TIME_MULTIPLIER, COINBASE
@@ -16,6 +17,7 @@ from tesseract.crypto import sign, sha256d
 from tesseract.transaction import Input,Output,Transaction
 import time
 import gc
+
 
 
 SO = sys.stdout
@@ -320,3 +322,6 @@ class Test_test(TestCase):
             inp.signature2 = sign(txn1.txid, PRIVS[0])
 
         assert self.storage.verify_txn(txn1)
+
+    def test_request_transaction(self):
+        self.storage.request_missing_transaction(sha256d(b'0'))

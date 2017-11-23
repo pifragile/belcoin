@@ -15,9 +15,10 @@ import argparse
 # port = args.port
 k = 0
 b = 0
-test_transactions =  createtxns.generate_pending_txns() +\
-                     createtxns.generate_pending_txns2() + \
-                    createtxns.generate_txns()
+test_transactions = createtxns2.generate_txns() +\
+                    createtxns2.generate_many_txns()
+                    #createtxns.generate_pending_txns() +\
+                     #createtxns.generate_pending_txns2() + \
                     # createtxns2.generate_txns() + \
                     #createtxns2.generate_many_txns() #+ \
                     #createtxns2.generate_txns2()
@@ -77,7 +78,7 @@ def call_txn(port,txn):
 
     d = proxy.callRemote('puttxn', txn, True)
     d.addCallbacks(printValue, printError).addBoth(cont_txn)
-    #test_txns()
+    test_txns()
 
 def call_bal(port):
     try:
@@ -129,11 +130,11 @@ def run():
 def test_txns():
     global k
     if k < len(test_transactions):
-        if (k % 5) == 0 and k > 0:
-            time.sleep(7)
+        # if (k % 5) == 0 and k > 0:
+        #     time.sleep(7)
         #time.sleep(0.1)
         txn = test_transactions[k]
-        reactor.callLater(0, call_txn, BASE_PORT_RPC + randint(0, 3),
+        reactor.callLater(0, call_txn, BASE_PORT_RPC + randint(0, 4),
                           b2hex(txn.serialize_full().get_bytes()))
         k +=1
 

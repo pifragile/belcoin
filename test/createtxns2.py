@@ -39,7 +39,7 @@ def generate_many_txns():
     txns = []
     all_txns = []
     prev_txns = generate_txns()
-    for j in range(10):
+    for j in range(100):
         for i in range(len(prev_txns)):
             txid = prev_txns[i].txid
             txn = Transaction(

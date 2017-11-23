@@ -15,7 +15,8 @@ from tesseract.util import b2hex, hex2b
 from tesseract.exceptions import InvalidTransactionError
 from tesseract.crypto import verify_sig, NO_HASH, merkle_root, sha256
 from pysyncobjbc import SyncObj, SyncObjConf, replicated
-from belcoin_node.config import BLOCK_SIZE, TIME_MULTIPLIER, TIMEOUT_CONST, TIMELOCK_CONST
+from belcoin_node.config import BLOCK_SIZE, TIME_MULTIPLIER, TIMEOUT_CONST, \
+    TIMELOCK_CONST, REQUEST_TXN_TIMEOUT
 from twisted.internet import reactor
 from txjsonrpc.web.jsonrpc import Proxy
 from terminaltables import AsciiTable
@@ -33,6 +34,7 @@ class Storage(SyncObj):
                             create_if_missing=True)
         self.pend = PendingDB(nid) #db of txns that have a timelock to wait
         self.txns_processed = 0
+        self.txns_accepted = 0
         self.missing_txns = []
         self.block_queue = []
         self.current_time = 0
@@ -270,7 +272,8 @@ class Storage(SyncObj):
         Creates a block (=List of txn hashes) and initiates RAFT
         """
         txns = self.mempool[:BLOCK_SIZE]
-        now = time.time() if time.time() > self.current_time else self.current_block
+        now = time.time() if time.time() > self.current_time else \
+            self.current_time
         block = {'time': now, 'txns' : [item[0] for item in txns]}
         #if set(block) not in map(set, self.block_queue):
         if set(block) != set(self.current_block):
@@ -289,8 +292,6 @@ class Storage(SyncObj):
 
     @replicated
     def add_block_to_queue(self, block):
-        if self._isLeader():
-            print('Leader')
         self.adding_block = True
         #if set(block) not in map(set, self.block_queue):
         self.current_time = block['time']
@@ -388,7 +389,7 @@ class Storage(SyncObj):
         #             b2hex(tx.txid), self.nid))
 
         if not reactor.running:
-            reactor.callWhenRunning(self.request_missing_transaction(), txnid)
+            reactor.callWhenRunning(self.request_missing_transaction, txnid)
             reactor.run()
         else:
                 reactor.callLater(0, self.req_txn, txnid, i)
@@ -406,8 +407,8 @@ class Storage(SyncObj):
         """
         Callback to be called when an error happened while sending a txn
         """
-        # TODO maybe resend txn
-        print(error)
+        #print(error)
+        pass
 
     def send_txn(self, addr, txn):
         """
@@ -430,7 +431,8 @@ class Storage(SyncObj):
         proxy = Proxy(addr)
         d = proxy.callRemote('req_txn', b2hex(txid), self.addr)
         d.addCallback(self.transaction_received, i=i, txid=txid)
-        d.addErrback(self.transaction_receive_error)
+        d.addErrback(self.transaction_receive_error, i = i, txid = txid)
+        reactor.callLater(REQUEST_TXN_TIMEOUT, d.cancel)
 
     def transaction_received(self, txn, i, txid):
         if txn == 0:
@@ -456,8 +458,9 @@ class Storage(SyncObj):
         if len(self.missing_txns) == 0:
             self.process_block(self.current_block)
 
-    def transaction_receive_error(self,err):
-        print(err)
+    def transaction_receive_error(self, err, i, txid):
+        #print(err)
+        self.request_missing_transaction(txid, i=i)
 
     def process_block(self, block):
         """
@@ -502,10 +505,12 @@ class Storage(SyncObj):
                             inp.txid, inp.index, self.pub_outs)
                     if VERBOSE:
                         print('txn {} ACCEPTED(PENDING)\n'.format(b2hex(txid)))
+                    self.txns_accepted += 1
                 else:
                     self.write_txn_to_db(txn, ts)
                     if VERBOSE:
                         print('txn {} ACCEPTED\n'.format(b2hex(txid)))
+                    self.txns_accepted += 1
             self.txns_processed+=1
 
 
@@ -515,7 +520,9 @@ class Storage(SyncObj):
                 print('\n')
 
         print('finished block {}'.format(b2hex(merkle_root(block))))
-        print('txns processed : {}'.format(str(self.txns_processed)))
+        print('txns accepted / processed : {} / {}'.format(str(
+            self.txns_accepted), str(
+            self.txns_processed)))
 
 
     def write_txn_to_db(self,txn,ts):
