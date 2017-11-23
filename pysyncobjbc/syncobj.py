@@ -627,20 +627,6 @@ class SyncObj(object):
                     self.__onBecomeLeader()
 
         if self.__raftState == _RAFT_STATE.LEADER:
-            ###belcoin
-
-            self.__tickctr += 1
-            #self.update_pend()
-            if (self.__tickctr >= BLOCK_TIMEOUT and len(self.mempool) > 0) or \
-                            len(self.mempool) >= BLOCK_SIZE:
-
-                if not self.leader_processing and not self.adding_block:
-                    self.leader_processing = True
-                    if VERBOSE:
-                        print('Sending a block to my friends...')
-                    self.send_block()
-                    self.__tickctr = 0
-            ###
 
             while self.__raftCommitIndex < self.__getCurrentLogIndex():
                 nextCommitIndex = self.__raftCommitIndex + 1
@@ -800,33 +786,6 @@ class SyncObj(object):
         return self._idToMethod[funcID](*args, **kwargs)
 
     def _onMessageReceived(self, nodeAddr, message):
-        ###belcoin
-        if message['type'] == 'broadcast_txn' or message['type'] == 'send_txn':
-            tx = Transaction.unserialize_full(SerializationBuffer(hex2b(message[
-                                                                      'txn'])))
-            print('node {} received txn {} from broadcast'.format(self.nid,
-                                                   b2hex(tx.txid)))
-
-            if len([txn for txn in self.mempool if txn[0] ==
-                    tx.txid]) == 0:
-                self.mempool.append((tx.txid, tx))
-                print('Txn {} put in mempool on node {}.'.format(b2hex(
-                    tx.txid), self.nid))
-            else:
-                print('Txn {} already in mempool on node {}.'.format(
-                    b2hex(tx.txid),self.nid))
-
-            if message['type'] == 'send_txn':
-                self.check_block(self.current_block)
-
-        if message['type'] == 'request_txn':
-            node_addr = message['addr']
-            txnid = message['txnid']
-            print('Node {} requested transaction {}'.format(node_addr,
-                                                            b2hex(txnid)))
-            self.send_txn(node_addr, txnid)
-
-        ###
 
         if message['type'] == 'request_vote' and self.__selfNodeAddr is not None:
 

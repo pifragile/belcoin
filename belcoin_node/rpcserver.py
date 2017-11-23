@@ -4,7 +4,7 @@ from tesseract.transaction import Transaction
 from tesseract.serialize import SerializationBuffer
 from tesseract.util import hex2b
 from belcoin_node.txnwrapper import TxnWrapper
-from belcoin_node.config import VERBOSE
+from belcoin_node.config import VERBOSE, BLOCK_SIZE
 import time
 
 class RPCServer(jsonrpc.JSONRPC):
@@ -18,7 +18,7 @@ class RPCServer(jsonrpc.JSONRPC):
     def jsonrpc_get(self, key):
         return self.node.storage.get(key)
 
-    def jsonrpc_puttxn(self, tx, broadcast=True):
+    def jsonrpc_puttxn(self, tx):
         '''
 
         :param tx:
@@ -26,59 +26,33 @@ class RPCServer(jsonrpc.JSONRPC):
         '''
         t = hex2b(tx)
         tx = Transaction.unserialize_full(SerializationBuffer(t))
-        if broadcast:
-            if VERBOSE:
-                print('Txn {} received.'.format(b2hex(
-                    tx.txid)))
-        else:
-            if VERBOSE:
-                print('Txn {} received from broadcast.'.format(b2hex(
-                    tx.txid)))
-
+        if VERBOSE:
+            print('Txn {} received.'.format(b2hex(
+                tx.txid)))
         if len([txn for txn in self.node.storage.mempool if txn[0] ==
                 tx.txid]) == 0:
             self.node.storage.mempool.append((tx.txid, tx))
             if VERBOSE:
                 print('Txn {} put in mempool.'.format(b2hex(
                     tx.txid)))
-            rval = 1;
+            if len(self.node.storage.mempool) > BLOCK_SIZE:
+                txns = self.node.storage.mempool[:BLOCK_SIZE]
+                del self.node.storage.mempool[:BLOCK_SIZE]
+                now = time.time() if time.time() > \
+                                     self.node.storage.current_time else \
+                    self.current_time
+                block = {'time': now, 'txns': [Transaction.serialize_full(item[1]) for
+                                               item in txns]}
+                self.node.storage.process_block(block)
+                print('DBGBLOCK')
+            rval = 1
         else:
             if VERBOSE:
                 print('Txn {} already in mempool.'.format(b2hex(
                     tx.txid)))
-            rval = 0;
+            rval = 0
 
-        if broadcast:
-            if VERBOSE:
-                print('Broadcasting transaction {}'.format(b2hex(
-                    tx.txid)))
-            self.node.storage.broadcast_txn(b2hex(t))
         return rval
-
-    def jsonrpc_req_txn(self,txnid,addr):
-
-        if VERBOSE:
-            print('Received Request for txn {} from {}'.format(txnid,addr))
-        txn = [txn[1] for txn in self.node.storage.mempool if txn[0] == txnid]
-        if len(txn) > 0:
-            txn = txn[0]
-        else:
-            txnw = self.node.storage.db.get(hex2b(txnid))
-            if txnw is None:
-                txnw = self.node.storage.pend.get(hex2b(txnid))
-                if txnw is None:
-                    txn = None
-
-            else:
-                txn = TxnWrapper.unserialize(SerializationBuffer(txnw)).txn
-
-        if txn is None:
-            if VERBOSE:
-                print('Transaction {} not found!'.format(txnid))
-            return 0
-
-        txn = b2hex(txn.serialize_full().get_bytes())
-        return txn
 
     def jsonrpc_print_balances(self):
         self.node.storage.print_balances()

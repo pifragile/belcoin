@@ -33,7 +33,7 @@ class SyncObjConf(object):
 
         #: After randomly selected timeout (in range from minTimeout to maxTimeout)
         #: leader considered dead, and leader election starts.
-        self.raftMinTimeout = kwargs.get('raftMinTimeout', 1.2)#was 0.4
+        self.raftMinTimeout = kwargs.get('raftMinTimeout', 0.4)#was 0.4
 
         #: Same as raftMinTimeout
         self.raftMaxTimeout = kwargs.get('raftMaxTimeout', 1.4)#was 1.4
@@ -58,7 +58,8 @@ class SyncObjConf(object):
         #: Send multiple entries in a single command.
         #: Enabled (default) - improve overall performance (requests per second)
         #: Disabled - improve single request speed (don't wait till batch ready)
-        self.appendEntriesUseBatch = kwargs.get('appendEntriesUseBatch', True)
+        self.appendEntriesUseBatch = kwargs.get('appendEntriesUseBatch',
+                                                True) #was True
 
         #: Max number of bytes per single append_entries command.
         self.appendEntriesBatchSizeBytes = kwargs.get('appendEntriesBatchSizeBytes', 2 ** 16)

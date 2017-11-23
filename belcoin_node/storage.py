@@ -204,8 +204,6 @@ class Storage(SyncObj):
 
 
 
-    #TODO check if should be replicated or not
-    #@replicated
     def update_pend(self):
         """
         Called by the RAFT leader periodically
@@ -256,233 +254,7 @@ class Storage(SyncObj):
 
         return TxnWrapper.unserialize(SerializationBuffer(val))
 
-    def broadcast_txn(self, txn):
-        """
-        Broadcasts a txn to all nodes rpc interfaces
-        """
-        if not reactor.running:
-            reactor.callWhenRunning(self.broadcast_txn, txn)
-            reactor.run()
-        else:
-            for addr in list(self.bcnode.rpc_peers.values()):#[:2]:
-                reactor.callLater(0, self.send_txn, addr, txn)
-
-
-    def send_block(self):
-        """
-        Called by the leader when a new block is ready
-        Creates a block (=List of txn hashes) and initiates RAFT
-        """
-        txns = self.mempool[:BLOCK_SIZE]
-        now = time.time() if time.time() > self.current_time else \
-            self.current_time
-        block = {'time': now, 'txns' : [item[0] for item in txns]}
-        #if set(block) not in map(set, self.block_queue):
-        if set(block) != set(self.current_block):
-            self.add_block_to_queue(block)
-
-    def try_process(self):
-        if not self.processing:
-            if len(self.block_queue) > 0:
-                block = self.block_queue[0]
-                self.processing = True
-                self.leader_processing = True
-                self.find_missing_transactions(block)
-                del self.block_queue[0]
-                self.processing = False
-                self.leader_processing = False
-
     @replicated
-    def add_block_to_queue(self, block):
-        self.adding_block = True
-        #if set(block) not in map(set, self.block_queue):
-        self.current_time = block['time']
-        self.update_pend()
-        block = block['txns']
-        if set(block) != set(self.current_block):
-            if VERBOSE:
-                print('received block {}'.format(b2hex(merkle_root(block))))
-            self.block_queue.append(block)
-        self.adding_block = False
-        self.try_process()
-
-
-
-    #@replicated
-    def find_missing_transactions(self, block):
-        """
-        If some txns were not in the mempool of this node, it sends a request to
-        the leader to get the txn
-        """
-        if VERBOSE:
-            print('received block {}'.format(b2hex(merkle_root(block))))
-        self.current_block = block
-        self.missing_txns = []
-        for txid in block:
-            tx = [txn for txn in self.mempool if txn[0] == txid]
-            if len(tx) == 0:
-                self.missing_txns.append(txid)
-        if len(self.missing_txns) > 0:
-                self.request_missing_transactions()
-        else:
-            self.process_block(block)
-
-    def request_missing_transactions(self):
-        """
-        requests txns from leader
-        """
-        for txn in self.missing_txns:
-            self.request_missing_transaction(txn)
-
-    def request_missing_transaction(self, txnid, i=0):
-        """
-        Requests one txn from the leader, this request needs to be blocking
-        because one cannot continue with the block until all txns are
-        available
-        """
-        # tx = None
-        # rpc_peers = list(self.bcnode.rpc_peers.values())
-        # i = 0
-        # while tx is None:
-        #     # try:
-        #     #     addr = self.bcnode.rpc_peers[self._getLeader()]
-        #     # except KeyError:
-        #     addr = rpc_peers[i % len(rpc_peers)]
-        #     if VERBOSE:
-        #         print('requesting transaction {} from {}'.format(b2hex(txnid),
-        #                                                          addr))
-        #     payload = {
-        #         "method": "req_txn",
-        #         "params": [b2hex(txnid), self.addr],
-        #         "jsonrpc": "2.0",
-        #         "id": 0,
-        #     }
-        #     headers = {'content-type': 'application/json'}
-        #     response = requests.post(
-        #         addr, data=json.dumps(payload), headers=headers).json()
-        #     if response['result'] == 0:
-        #         i += 1
-        #
-        #         #check if tx is now in mempool, there can be strange race
-        #         # conditions when leader changes in a bad moment
-        #         if i % len(rpc_peers) == 0:
-        #             txn_list = [txn for txn in self.mempool if txn[0] == txnid]
-        #             if len(txn_list) > 0:
-        #                 tx = txn_list[0]
-        #         continue
-        #
-        #     tx = Transaction.unserialize_full(SerializationBuffer(hex2b(response['result'])))
-        #     i += 1
-        #
-        #
-        # if VERBOSE:
-        #     print('node {} received txn {}'.format(self.nid,
-        #                                            b2hex(tx.txid)))
-        #
-        # if len([txn for txn in self.mempool if txn[0] ==
-        #         tx.txid]) == 0:
-        #     self.mempool.append((tx.txid, tx))
-        #     if VERBOSE:
-        #         print('Txn {} put in mempool on node {}.'.format(b2hex(
-        #             tx.txid), self.nid))
-        # else:
-        #     if VERBOSE:
-        #         print('Txn {} already in mempool on node {}.'.format(
-        #             b2hex(tx.txid), self.nid))
-
-        # check if tx is now in mempool, there can be strange race
-        # conditions when leader changes in a bad moment
-
-        if i % 2 == 0:
-            txn_list = [txn for txn in self.mempool if txn[0] == txnid]
-            if len(txn_list) > 0:
-                if txnid in self.missing_txns:
-                    self.missing_txns.remove(txnid)
-                if len(self.missing_txns) == 0:
-                    if txnid not in self.current_block:
-                        return
-                    if not self.processing_block:
-                        self.process_block(self.current_block)
-
-        print('ACHTUNG:{}'.format(str(i)))
-        if not reactor.running:
-            reactor.callWhenRunning(self.request_missing_transaction, txnid)
-            reactor.run()
-        else:
-                reactor.callLater(0, self.req_txn, txnid, i)
-
-
-
-
-    def transaction_sent(self, value):
-        """
-        Callback to be called after a txn was successfully sent
-        """
-        pass #value = 1 if txn was written, 0 if it already existed
-
-    def transaction_send_error(self,error):
-        """
-        Callback to be called when an error happened while sending a txn
-        """
-        #print(error)
-        pass
-
-    def send_txn(self, addr, txn):
-        """
-        send a txn to addr
-        """
-        proxy = Proxy(addr)
-        d = proxy.callRemote('puttxn', txn, False)
-        d.addCallbacks(self.transaction_sent,
-                       self.transaction_send_error)
-    def req_txn(self, txid, i):
-        """
-        request a txn
-        """
-        i += 1
-        rpc_peers = list(self.bcnode.rpc_peers.values())
-        addr = rpc_peers[i % len(rpc_peers)]
-        if VERBOSE:
-            print('requesting transaction {} from {}'.format(b2hex(txid),
-                                                                      addr))
-        proxy = Proxy(addr)
-        d = proxy.callRemote('req_txn', b2hex(txid), self.addr)
-        d.addCallback(self.transaction_received, i=i, txid=txid)
-        d.addErrback(self.transaction_receive_error, i = i, txid = txid)
-        #reactor.callLater(REQUEST_TXN_TIMEOUT, d.cancel)
-
-    def transaction_received(self, txn, i, txid):
-        if txn == 0:
-            self.request_missing_transaction(txid, i=i)
-            return
-
-        tx = Transaction.unserialize_full(SerializationBuffer(hex2b(txn)))
-        if VERBOSE:
-            print('node {} received txn {}'.format(self.nid,
-                                                   b2hex(tx.txid)))
-
-        if len([txn for txn in self.mempool if txn[0] ==
-                tx.txid]) == 0:
-            self.mempool.append((tx.txid, tx))
-            if txid in self.missing_txns:
-                self.missing_txns.remove(txid)
-            if VERBOSE:
-                print('Txn {} put in mempool on node {}.'.format(b2hex(
-                    tx.txid), self.nid))
-        else:
-            if VERBOSE:
-                print('Txn {} already in mempool on node {}.'.format(
-                    b2hex(tx.txid), self.nid))
-        if len(self.missing_txns) == 0:
-            if txid not in self.current_block:
-                return
-            if not self.processing_block:
-                self.process_block(self.current_block)
-
-    def transaction_receive_error(self, err, i, txid):
-        print(err)
-        self.request_missing_transaction(txid, i=i)
-
     def process_block(self, block):
         """
         Process a block(= list of txn hashes)
@@ -494,20 +266,14 @@ class Storage(SyncObj):
         either write to pend or to db
 
         """
-        self.processing_block = True
-        for txid in block:
-            tx = [txn[1] for txn in self.mempool if txn[0] == txid]
-
-            if len(tx) == 0:
-                raise InvalidTransactionError(
-                    "VERY STRANGE ERROR".format(self.nid))
-            if len(tx) > 1:
-                raise InvalidTransactionError(
-                    "COLLISION OOOHHH MYYYY GOOOOD".format(self.nid))
-            txn = tx[0]
-
+        print('BLOCK')
+        self.current_time = block['time'] if block['time'] > \
+                                             self.current_time else self.current_time
+        self.update_pend()
+        block = map(Transaction.unserialize_full, block['txns'])
+        for txn in block:
+            txid = txn.txid
             ts = int(self.current_time * TIME_MULTIPLIER)
-
             if self.verify_txn(txn):
                 #write txn to pend or db depending on timelock
                 if txn.timelock:
@@ -534,17 +300,13 @@ class Storage(SyncObj):
                     self.txns_accepted += 1
             self.txns_processed+=1
 
-
-            self.remove_txn_from_mempool_and_return(txid)
             if VERBOSE:
                 self.print_balances()
                 print('\n')
 
-        print('finished block {}'.format(b2hex(merkle_root(block))))
         print('txns accepted / processed : {} / {}'.format(str(
             self.txns_accepted), str(
             self.txns_processed)))
-        self.processing_block = False
 
 
     def write_txn_to_db(self,txn,ts):
@@ -594,7 +356,6 @@ class Storage(SyncObj):
         if txid in self:
             if VERBOSE:
                 print('Trasaction {} is already stored'.format(b2hex(txid)))
-            self.remove_txn_from_mempool_and_return(txid)
             return False
 
         has_coins = 0
@@ -610,7 +371,6 @@ class Storage(SyncObj):
                         print("Invalid input on transaction %s (input "
                               "index out of bounds)!" % b2hex(
                             txn.txid))
-                    self.remove_txn_from_mempool_and_return(txid)
                     return False
                 has_coins += spent_output.amount
             except KeyError:
@@ -621,7 +381,6 @@ class Storage(SyncObj):
                 if VERBOSE:
                     print("Invalid input on transaction %s!" % b2hex(
                         txn.txid))
-                self.remove_txn_from_mempool_and_return(txid)
                 return False
 
             # verify signatures
@@ -636,7 +395,6 @@ class Storage(SyncObj):
                         if VERBOSE:
                             print("Invalid signatures on transaction %s!" % b2hex(
                                 txn.txid))
-                        self.remove_txn_from_mempool_and_return(txid)
                         return False
 
             #Case that timeout isnt reached yet
@@ -646,7 +404,6 @@ class Storage(SyncObj):
                         print("Preimage doesn't match hashlock on transaction "
                               "%s!" % b2hex(
                             txn.txid))
-                    self.remove_txn_from_mempool_and_return(txid)
                     return False
 
                 if (not verify_sig(txn.txid, spent_output.htlc_pubkey,
@@ -655,7 +412,6 @@ class Storage(SyncObj):
                             print("Invalid htlc signatures on transaction %s!" %
                                   b2hex(
                                 txn.txid))
-                        self.remove_txn_from_mempool_and_return(txid)
                         return False
 
             if check_pend:
@@ -669,7 +425,6 @@ class Storage(SyncObj):
                         print(
                             'txn %s tries to replace a txn for which it is not allowed' %
                             b2hex(txn.txid))
-                    self.remove_txn_from_mempool_and_return(txid)
                     return False
 
                 #check[1] is true if a conflicting txn was found in pend
@@ -682,7 +437,6 @@ class Storage(SyncObj):
                             if VERBOSE:
                                 print("Transaction %s uses spent outputs!" % b2hex(
                                     txn.txid))
-                            self.remove_txn_from_mempool_and_return(txid)
                             return False
 
 
@@ -691,17 +445,8 @@ class Storage(SyncObj):
             if VERBOSE:
                 print('Sum of Output Amounts doesnt equal sum of Input Amounts in txn %s' % b2hex(
                             txn.txid))
-            self.remove_txn_from_mempool_and_return(txid)
             return False
         return True
-
-    def remove_txn_from_mempool_and_return(self, txid):
-        """
-        remove a txn from mempool
-        """
-        self.mempool = [txn for txn in self.mempool if txn[0] != txid]
-        if VERBOSE:
-            print('\n')
 
 
     def __getitem__(self, key):

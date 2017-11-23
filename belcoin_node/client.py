@@ -76,7 +76,7 @@ def call_txn(port,txn):
         print('###Sending test transaction to ' + '127.0.0.1:' + str(
             port) + '/')
 
-    d = proxy.callRemote('puttxn', txn, True)
+    d = proxy.callRemote('puttxn', txn)
     d.addCallbacks(printValue, printError).addBoth(cont_txn)
     test_txns()
 
