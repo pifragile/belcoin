@@ -134,7 +134,7 @@ def test_txns():
         #     time.sleep(7)
         #time.sleep(0.1)
         txn = test_transactions[k]
-        reactor.callLater(0, call_txn, BASE_PORT_RPC + randint(0, 4),
+        reactor.callLater(0, call_txn, BASE_PORT_RPC + randint(0, 3),
                           b2hex(txn.serialize_full().get_bytes()))
         k +=1
 

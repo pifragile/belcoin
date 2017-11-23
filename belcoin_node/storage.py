@@ -1,3 +1,4 @@
+import random
 import sys
 import os
 import time
@@ -37,6 +38,7 @@ class Storage(SyncObj):
         self.txns_accepted = 0
         self.missing_txns = []
         self.block_queue = []
+        self.processing_block = False
         self.current_time = 0
 
         #create genesis transaction:
@@ -332,7 +334,7 @@ class Storage(SyncObj):
         for txn in self.missing_txns:
             self.request_missing_transaction(txn)
 
-    def request_missing_transaction(self, txnid, i = 0):
+    def request_missing_transaction(self, txnid, i=0):
         """
         Requests one txn from the leader, this request needs to be blocking
         because one cannot continue with the block until all txns are
@@ -388,6 +390,21 @@ class Storage(SyncObj):
         #         print('Txn {} already in mempool on node {}.'.format(
         #             b2hex(tx.txid), self.nid))
 
+        # check if tx is now in mempool, there can be strange race
+        # conditions when leader changes in a bad moment
+
+        if i % 2 == 0:
+            txn_list = [txn for txn in self.mempool if txn[0] == txnid]
+            if len(txn_list) > 0:
+                if txnid in self.missing_txns:
+                    self.missing_txns.remove(txnid)
+                if len(self.missing_txns) == 0:
+                    if txnid not in self.current_block:
+                        return
+                    if not self.processing_block:
+                        self.process_block(self.current_block)
+
+        print('ACHTUNG:{}'.format(str(i)))
         if not reactor.running:
             reactor.callWhenRunning(self.request_missing_transaction, txnid)
             reactor.run()
@@ -432,7 +449,7 @@ class Storage(SyncObj):
         d = proxy.callRemote('req_txn', b2hex(txid), self.addr)
         d.addCallback(self.transaction_received, i=i, txid=txid)
         d.addErrback(self.transaction_receive_error, i = i, txid = txid)
-        reactor.callLater(REQUEST_TXN_TIMEOUT, d.cancel)
+        #reactor.callLater(REQUEST_TXN_TIMEOUT, d.cancel)
 
     def transaction_received(self, txn, i, txid):
         if txn == 0:
@@ -447,7 +464,8 @@ class Storage(SyncObj):
         if len([txn for txn in self.mempool if txn[0] ==
                 tx.txid]) == 0:
             self.mempool.append((tx.txid, tx))
-            self.missing_txns.remove(txid)
+            if txid in self.missing_txns:
+                self.missing_txns.remove(txid)
             if VERBOSE:
                 print('Txn {} put in mempool on node {}.'.format(b2hex(
                     tx.txid), self.nid))
@@ -456,10 +474,13 @@ class Storage(SyncObj):
                 print('Txn {} already in mempool on node {}.'.format(
                     b2hex(tx.txid), self.nid))
         if len(self.missing_txns) == 0:
-            self.process_block(self.current_block)
+            if txid not in self.current_block:
+                return
+            if not self.processing_block:
+                self.process_block(self.current_block)
 
     def transaction_receive_error(self, err, i, txid):
-        #print(err)
+        print(err)
         self.request_missing_transaction(txid, i=i)
 
     def process_block(self, block):
@@ -473,7 +494,7 @@ class Storage(SyncObj):
         either write to pend or to db
 
         """
-
+        self.processing_block = True
         for txid in block:
             tx = [txn[1] for txn in self.mempool if txn[0] == txid]
 
@@ -523,6 +544,7 @@ class Storage(SyncObj):
         print('txns accepted / processed : {} / {}'.format(str(
             self.txns_accepted), str(
             self.txns_processed)))
+        self.processing_block = False
 
 
     def write_txn_to_db(self,txn,ts):

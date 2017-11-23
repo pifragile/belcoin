@@ -53,10 +53,10 @@ class RPCServer(jsonrpc.JSONRPC):
                 print('Broadcasting transaction {}'.format(b2hex(
                     tx.txid)))
             self.node.storage.broadcast_txn(b2hex(t))
-        self.node.storage.try_process()
         return rval
 
     def jsonrpc_req_txn(self,txnid,addr):
+
         if VERBOSE:
             print('Received Request for txn {} from {}'.format(txnid,addr))
         txn = [txn[1] for txn in self.node.storage.mempool if txn[0] == txnid]
