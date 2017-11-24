@@ -35,16 +35,7 @@ class RPCServer(jsonrpc.JSONRPC):
             if VERBOSE:
                 print('Txn {} put in mempool.'.format(b2hex(
                     tx.txid)))
-            if len(self.node.storage.mempool) > BLOCK_SIZE:
-                txns = self.node.storage.mempool[:BLOCK_SIZE]
-                del self.node.storage.mempool[:BLOCK_SIZE]
-                now = time.time() if time.time() > \
-                                     self.node.storage.current_time else \
-                    self.current_time
-                block = {'time': now, 'txns': [Transaction.serialize_full(item[1]) for
-                                               item in txns]}
-                self.node.storage.process_block(block)
-                print('DBGBLOCK')
+            self.node.storage.try_process()
             rval = 1
         else:
             if VERBOSE:

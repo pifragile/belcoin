@@ -274,6 +274,8 @@ class SyncObj(object):
             self.__initInTickThread()
 
     ###belcoin
+    def try_process(self):
+        pass
     def update_pend(self):
         pass
 
@@ -702,6 +704,10 @@ class SyncObj(object):
                     node._destroy()
 
         self._poller.poll(timeToWait)
+
+        #belcoin
+        self.try_process()
+        ###
 
     def getStatus(self):
         """Dumps different debug info about cluster to dict and return it"""

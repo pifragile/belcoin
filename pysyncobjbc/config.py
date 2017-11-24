@@ -29,14 +29,15 @@ class SyncObjConf(object):
         self.autoTickPeriod = kwargs.get('autoTickPeriod', 0.05)
 
         #: Commands queue is used to store commands before real processing.
-        self.commandsQueueSize = kwargs.get('commandsQueueSize', 100000)
+        self.commandsQueueSize = kwargs.get('commandsQueueSize',
+                                            100000)#was100000
 
         #: After randomly selected timeout (in range from minTimeout to maxTimeout)
         #: leader considered dead, and leader election starts.
-        self.raftMinTimeout = kwargs.get('raftMinTimeout', 0.4)#was 0.4
+        self.raftMinTimeout = kwargs.get('raftMinTimeout', 10)#was 0.4
 
         #: Same as raftMinTimeout
-        self.raftMaxTimeout = kwargs.get('raftMaxTimeout', 1.4)#was 1.4
+        self.raftMaxTimeout = kwargs.get('raftMaxTimeout', 11)#was 1.4
 
         #: Interval of sending append_entries (ping) command.
         #: Should be less than raftMinTimeout.
@@ -44,7 +45,7 @@ class SyncObjConf(object):
 
         #: When no data received for connectionTimeout - connection considered dead.
         #: Should be more than raftMaxTimeout.
-        self.connectionTimeout = kwargs.get('connectionTimeout', 3.5)
+        self.connectionTimeout = kwargs.get('connectionTimeout', 12)#3.5
 
         #: Interval between connection attempts.
         #: Will try to connect to offline nodes each connectionRetryTime.
@@ -59,10 +60,11 @@ class SyncObjConf(object):
         #: Enabled (default) - improve overall performance (requests per second)
         #: Disabled - improve single request speed (don't wait till batch ready)
         self.appendEntriesUseBatch = kwargs.get('appendEntriesUseBatch',
-                                                True) #was True
+                                                False) #was True
 
         #: Max number of bytes per single append_entries command.
-        self.appendEntriesBatchSizeBytes = kwargs.get('appendEntriesBatchSizeBytes', 2 ** 16)
+        self.appendEntriesBatchSizeBytes = kwargs.get(
+            'appendEntriesBatchSizeBytes', 2 ** 16) ## 2 ** 16
 
         #: Bind address (address:port). Default - None.
         #: If None - selfAddress is used as bindAddress.
@@ -110,7 +112,8 @@ class SyncObjConf(object):
         #: If true - commands will be enqueued and executed after leader detected.
         #: Otherwise - `FAIL_REASON.MISSING_LEADER <#pysyncobj.FAIL_REASON.MISSING_LEADER>`_ error will be emitted.
         #: Leader is missing when esteblishing connection or when election in progress.
-        self.commandsWaitLeader = kwargs.get('commandsWaitLeader', True)
+        self.commandsWaitLeader = kwargs.get('commandsWaitLeader', True)#was
+        # True
 
         #: File to store full serialized object. Save full dump on disc when doing log compaction.
         #: None - to disable store.

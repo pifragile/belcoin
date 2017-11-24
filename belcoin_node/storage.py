@@ -40,6 +40,8 @@ class Storage(SyncObj):
         self.block_queue = []
         self.processing_block = False
         self.current_time = 0
+        self.processing = False
+        self.mempool = []
 
         #create genesis transaction:
         gentxn = COINBASE
@@ -254,6 +256,18 @@ class Storage(SyncObj):
 
         return TxnWrapper.unserialize(SerializationBuffer(val))
 
+    def try_process(self):
+        if len(self.mempool) > BLOCK_SIZE:
+            txns = self.mempool[:BLOCK_SIZE]
+            del self.mempool[:BLOCK_SIZE]
+            now = time.time() if time.time() > \
+                                 self.current_time else \
+                self.current_time
+            block = {'time': now,
+                     'txns': [Transaction.serialize_full(item[1]) for
+                              item in txns]}
+            self.process_block(block)
+
     @replicated
     def process_block(self, block):
         """
@@ -266,7 +280,6 @@ class Storage(SyncObj):
         either write to pend or to db
 
         """
-        print('BLOCK')
         self.current_time = block['time'] if block['time'] > \
                                              self.current_time else self.current_time
         self.update_pend()
