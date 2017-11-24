@@ -143,9 +143,8 @@ class SyncObj(object):
         self.nid = 0
         #self.db = None
         self.processing = False
-        self.leader_processing = False
-        self.adding_block = False
         self.current_block = []
+        self.adding_block = False
         ###
 
         self.__consumers = consumers
@@ -595,6 +594,10 @@ class SyncObj(object):
         self._onTick(timeToWait)
 
     def _onTick(self, timeToWait=0.0):
+        #belcoin
+        self.try_process()
+        ###
+
         if not self.__isInitialized:
             if time.time() >= self.__lastInitTryTime + self.__conf.bindRetryTime:
                 self.__initInTickThread()
@@ -630,16 +633,13 @@ class SyncObj(object):
 
         if self.__raftState == _RAFT_STATE.LEADER:
             ###belcoin
-
             self.__tickctr += 1
             #self.update_pend()
             if (self.__tickctr >= BLOCK_TIMEOUT and len(self.mempool) > 0) or \
                             len(self.mempool) >= BLOCK_SIZE:
 
-                if not self.leader_processing and not self.adding_block:
-                    self.leader_processing = True
-                    if VERBOSE:
-                        print('Sending a block to my friends...')
+                if not self.processing and not self.adding_block:
+                    self.adding_block = True
                     self.send_block()
                     self.__tickctr = 0
             ###
@@ -718,10 +718,6 @@ class SyncObj(object):
                     node._destroy()
 
         self._poller.poll(timeToWait)
-
-        #belcoin
-        self.try_process()
-        ###
 
     def getStatus(self):
         """Dumps different debug info about cluster to dict and return it"""

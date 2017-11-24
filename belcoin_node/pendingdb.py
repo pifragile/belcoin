@@ -5,7 +5,6 @@ from tesseract.serialize import SerializationBuffer
 from tesseract.util import b2hex
 
 
-
 class PendingDB(object):
     def __init__(self, nid):
         self.db = plyvel.DB(join(expanduser('~/.belcoin'), 'db_pend_'+str(nid)),

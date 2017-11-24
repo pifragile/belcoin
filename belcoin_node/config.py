@@ -13,4 +13,5 @@ REQUEST_TXN_TIMEOUT = 5
 
 
 VERBOSE = False
-COINBASE = createtxns2.genesis_txn()
+VERBOSE_FAILURE = False
+COINBASE = createtxns2.genesis_txn1()

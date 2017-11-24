@@ -17,7 +17,7 @@ from tesseract.exceptions import InvalidTransactionError
 from tesseract.crypto import verify_sig, NO_HASH, merkle_root, sha256
 from pysyncobjbc import SyncObj, SyncObjConf, replicated
 from belcoin_node.config import BLOCK_SIZE, TIME_MULTIPLIER, TIMEOUT_CONST, \
-    TIMELOCK_CONST, REQUEST_TXN_TIMEOUT
+    TIMELOCK_CONST, REQUEST_TXN_TIMEOUT, VERBOSE_FAILURE
 from twisted.internet import reactor
 from txjsonrpc.web.jsonrpc import Proxy
 from terminaltables import AsciiTable
@@ -275,34 +275,32 @@ class Storage(SyncObj):
         Creates a block (=List of txn hashes) and initiates RAFT
         """
         txns = self.mempool[:BLOCK_SIZE]
+        txs = [item[0] for item in txns]
         now = time.time() if time.time() > self.current_time else \
             self.current_time
-        block = {'time': now, 'txns' : [item[0] for item in txns]}
-        #if set(block) not in map(set, self.block_queue):
-        if set(block) != set(self.current_block):
+        block = {'time': now, 'txns': txs}
+        if len(set(txs) & set(self.current_block)) == 0:
+            if VERBOSE:
+                print('Sending a block to my friends...')
             self.add_block_to_queue(block)
 
     def try_process(self):
         if not self.processing:
             if len(self.block_queue) > 0:
                 block = self.block_queue[0]
+                self.current_block = block
                 self.processing = True
-                self.leader_processing = True
-                self.find_missing_transactions(block)
+                self.adding_block = False
+                self.find_missing_transactions(self.current_block)
 
     @replicated
     def add_block_to_queue(self, block):
-        self.adding_block = True
-        #if set(block) not in map(set, self.block_queue):
         self.current_time = block['time']
         self.update_pend()
         block = block['txns']
-        if set(block) != set(self.current_block):
-            if VERBOSE:
-                print('received block {}'.format(b2hex(merkle_root(block))))
-            self.block_queue.append(block)
-            self.adding_block = False
-            self.try_process()
+        if VERBOSE:
+            print('received block {}'.format(b2hex(merkle_root(block))))
+        self.block_queue.append(block)
 
     def find_missing_transactions(self, block):
         """
@@ -311,7 +309,6 @@ class Storage(SyncObj):
         """
         if VERBOSE:
             print('received block {}'.format(b2hex(merkle_root(block))))
-        self.current_block = block
         self.missing_txns = []
         for txid in block:
             tx = [txn for txn in self.mempool if txn[0] == txid]
@@ -388,7 +385,7 @@ class Storage(SyncObj):
         # check if tx is now in mempool, there can be strange race
         # conditions when leader changes in a bad moment
 
-        if i % 2 == 0:
+        if i % 5 == 0:
             txn_list = [txn for txn in self.mempool if txn[0] == txnid]
             if len(txn_list) > 0:
                 if txnid in self.missing_txns:
@@ -542,9 +539,9 @@ class Storage(SyncObj):
             if VERBOSE:
                 print('\n')
 
-            if VERBOSE:
-                self.print_balances()
-                print('\n')
+            # if VERBOSE:
+            #     self.print_balances()
+            #     print('\n')
 
         print('finished block {}'.format(b2hex(merkle_root(block))))
         print('txns accepted / processed : {} / {}'.format(str(
@@ -552,8 +549,8 @@ class Storage(SyncObj):
             self.txns_processed)))
 
         del self.block_queue[0]
+        self.current_block = []
         self.processing = False
-        self.leader_processing = False
         self.processing_block = False
 
 
@@ -603,9 +600,9 @@ class Storage(SyncObj):
         txid = txn.txid
 
         if txid in self:
-            if VERBOSE:
+            if VERBOSE_FAILURE:
                 print('Trasaction {} is already stored'.format(b2hex(txid)))
-            self.remove_invalid_txn_from_mempool(txid)
+            self.mempool = [txn for txn in self.mempool if txn[0] != txid]
             return False
 
         has_coins = 0
@@ -617,7 +614,7 @@ class Storage(SyncObj):
                 try:
                     spent_output = output_txnw.txn.outputs[inp.index]
                 except IndexError:
-                    if VERBOSE:
+                    if VERBOSE_FAILURE:
                         print("Invalid input on transaction %s (input "
                               "index out of bounds)!" % b2hex(
                             txn.txid))
@@ -626,10 +623,10 @@ class Storage(SyncObj):
                 has_coins += spent_output.amount
             except KeyError:
                 if inp.txid in self.pend:
-                    if VERBOSE:
+                    if VERBOSE_FAILURE:
                         print('Transaction %s is still locked!' % b2hex(
                             txn.txid))
-                if VERBOSE:
+                if VERBOSE_FAILURE:
                     print("Invalid input on transaction %s!" % b2hex(
                         txn.txid))
                 self.remove_invalid_txn_from_mempool(txid)
@@ -644,7 +641,7 @@ class Storage(SyncObj):
                                    inp.signature) or
                         not verify_sig(txn.txid, spent_output.pubkey2,
                                        inp.signature2)):
-                        if VERBOSE:
+                        if VERBOSE_FAILURE:
                             print("Invalid signatures on transaction %s!" % b2hex(
                                 txn.txid))
                         self.remove_invalid_txn_from_mempool(txid)
@@ -653,7 +650,7 @@ class Storage(SyncObj):
             #Case that timeout isnt reached yet
             else:
                 if not sha256(inp.htlc_preimage) == spent_output.htlc_hashlock:
-                    if VERBOSE:
+                    if VERBOSE_FAILURE:
                         print("Preimage doesn't match hashlock on transaction "
                               "%s!" % b2hex(
                             txn.txid))
@@ -662,7 +659,7 @@ class Storage(SyncObj):
 
                 if (not verify_sig(txn.txid, spent_output.htlc_pubkey,
                                    inp.htlc_signature)):
-                        if VERBOSE:
+                        if VERBOSE_FAILURE:
                             print("Invalid htlc signatures on transaction %s!" %
                                   b2hex(
                                 txn.txid))
