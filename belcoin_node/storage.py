@@ -297,12 +297,12 @@ class Storage(SyncObj):
         self.current_time = block['time']
         self.update_pend()
         block = block['txns']
-        #if set(block) != set(self.current_block):
-        if VERBOSE:
-            print('received block {}'.format(b2hex(merkle_root(block))))
-        self.block_queue.append(block)
-        self.adding_block = False
-        self.try_process()
+        if set(block) != set(self.current_block):
+            if VERBOSE:
+                print('received block {}'.format(b2hex(merkle_root(block))))
+            self.block_queue.append(block)
+            self.adding_block = False
+            self.try_process()
 
     def find_missing_transactions(self, block):
         """
@@ -552,9 +552,9 @@ class Storage(SyncObj):
             self.txns_processed)))
 
         del self.block_queue[0]
-        self.processing_block = False
         self.processing = False
         self.leader_processing = False
+        self.processing_block = False
 
 
     def write_txn_to_db(self,txn,ts):
