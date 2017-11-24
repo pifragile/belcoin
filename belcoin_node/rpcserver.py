@@ -24,6 +24,7 @@ class RPCServer(jsonrpc.JSONRPC):
         :param tx:
         :return: 1 if transaction was put, 0 if txn was already there
         '''
+
         t = hex2b(tx)
         tx = Transaction.unserialize_full(SerializationBuffer(t))
         if broadcast:
@@ -56,26 +57,24 @@ class RPCServer(jsonrpc.JSONRPC):
         return rval
 
     def jsonrpc_req_txn(self,txnid,addr):
-
         if VERBOSE:
-            print('Received Request for txn {} from {}'.format(txnid,addr))
-        txn = [txn[1] for txn in self.node.storage.mempool if txn[0] == txnid]
+            print('Received Request for txn {} from {}'.format(txnid, addr))
+        if hex2b(txnid) in self.node.storage.invalid_txns:
+            return None
+
+        txn = [txn[1] for txn in self.node.storage.mempool if txn[0] ==
+               hex2b(txnid)]
         if len(txn) > 0:
             txn = txn[0]
         else:
             txnw = self.node.storage.db.get(hex2b(txnid))
             if txnw is None:
                 txnw = self.node.storage.pend.get(hex2b(txnid))
-                if txnw is None:
-                    txn = None
-
-            else:
-                txn = TxnWrapper.unserialize(SerializationBuffer(txnw)).txn
-
-        if txn is None:
-            if VERBOSE:
-                print('Transaction {} not found!'.format(txnid))
-            return 0
+            if txnw is None:
+                if VERBOSE:
+                    print('Transaction {} not found!'.format(txnid))
+                return 0
+            txn = TxnWrapper.unserialize(SerializationBuffer(txnw)).txn
 
         txn = b2hex(txn.serialize_full().get_bytes())
         return txn
