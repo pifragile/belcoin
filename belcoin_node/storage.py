@@ -100,16 +100,16 @@ class Storage(SyncObj):
 
     def utxos_for_pubkey(self, pubkey):
         utxos = []
-        if pubkey not in self.pub_outs_pend and pubkey not in self.pub_outs:
-            return []
+        if pubkey in self.pub_outs:
+            for (txid, i) in self.pub_outs[pubkey]:
 
-        for (txid, i) in self.pub_outs:
-            ts = self[txid].timestamp / TIME_MULTIPLIER
-            utxos.append([txid, i, ts])
-
-        for (txid, i) in self.pub_outs_pend:
-            ts = self[txid].timestamp / TIME_MULTIPLIER
-            utxos.append([txid, i, ts])
+                ts = self[txid].timestamp / TIME_MULTIPLIER
+                utxos.append([txid, i, ts])
+        if pubkey in self.pub_outs_pend:
+            for (txid, i) in self.pub_outs_pend[pubkey]:
+                ts = self[txid].timestamp / TIME_MULTIPLIER
+                utxos.append([txid, i, ts])
+        return utxos
 
     def get_balance(self, pubkey, index):
         """

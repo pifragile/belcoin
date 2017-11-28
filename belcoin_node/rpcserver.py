@@ -95,8 +95,8 @@ class RPCServer(jsonrpc.JSONRPC):
             } for ref in utxo_refs]
         return utxos_by_addr
 
-    def jsonrpc_sendrawtx(self, txn):
-        i = self.jsonrpc_puttxn(txn)
+    def jsonrpc_sendrawtx(self, txn, broadcast=True):
+        i = self.jsonrpc_puttxn(txn, broadcast)
         t = hex2b(txn)
         txid = Transaction.unserialize_full(SerializationBuffer(t)).txid
         if i == 1:

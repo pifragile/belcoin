@@ -2,8 +2,10 @@ from twisted.internet import reactor
 from txjsonrpc.web.jsonrpc import Proxy
 from tesseract.transaction import Transaction
 from tesseract.util import b2hex
+from tesseract.address import pubkey_to_address
 from test import createtxns,createtxns2
 from belcoin_node.config import BASE_PORT_RPC, VERBOSE
+from belcoin_node.util import PUBS
 from random import randint
 import time
 import argparse
@@ -15,8 +17,9 @@ import argparse
 # port = args.port
 k = 0
 b = 0
-test_transactions = createtxns.generate_pending_txns() +\
-                    createtxns.generate_pending_txns2() #"+ \
+test_transactions = createtxns.generate_txns()
+                    #createtxns.generate_pending_txns() +\
+                    #createtxns.generate_pending_txns2() #"+ \
                     #createtxns2.generate_many_txns2()
                     #createtxns2.generate_txns() +\
                     #createtxns2.generate_many_txns()
@@ -41,14 +44,14 @@ num_bal = 0
 
 
 def printValue(value):
-    if VERBOSE:
-        print("Result: %s" % str(value))
-
+    print("Result: %s" % str(value))
+    run()
 
 
 def printError(error):
     if VERBOSE:
         print ('error', error)
+    run()
 
 def cont_txn(data):
     global num_txns
@@ -77,8 +80,8 @@ def call_txn(port,txn):
         print('###Sending test transaction to ' + '127.0.0.1:' + str(
             port) + '/')
 
-    d = proxy.callRemote('puttxn', txn, True)
-    d.addCallbacks(printValue, printError).addBoth(cont_txn)
+    d = proxy.callRemote('sendrawtx', txn, True)
+    d.addBoth(cont_txn)
     test_txns()
 
 def call_bal(port):
@@ -91,6 +94,18 @@ def call_bal(port):
         d = proxy.callRemote('print_balances')
         d.addCallbacks(printValue, printError).addBoth(cont_bal)
         print_balances()
+    except Exception as err:
+        print(err)
+
+def call_utxos(port, addr):
+    try:
+        proxy = Proxy('http://127.0.0.1:' + str(port) + '/')
+        if VERBOSE:
+            print('###Send utxo request to ' + '127.0.0.1:' + str(
+            port) + '/')
+
+        d = proxy.callRemote('getutxos', [addr])
+        d.addCallbacks(printValue, printError)
     except Exception as err:
         print(err)
 
@@ -115,6 +130,16 @@ def run():
                 port)+'/')
             txn = b2hex(Transaction([],[]).serialize_full().get_bytes())
             reactor.callLater(0, call_txn, port, txn)
+
+        elif cmd[0] == 'utxos':
+            port = int(cmd[1])
+            print('###Sending utxo request to ' + '127.0.0.1:'+str(
+                port)+'/')
+            proxy = Proxy('http://127.0.0.1:' + str(port) + '/')
+            reactor.callLater(0, call_utxos, port, pubkey_to_address(PUBS[
+                                                                        int(
+                                                                             cmd[
+                                                                             2])]))
 
         elif cmd[0] == 'txns':
             global num_txns
