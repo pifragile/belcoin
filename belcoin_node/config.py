@@ -12,6 +12,6 @@ TIMELOCK_CONST = 1000000000
 REQUEST_TXN_TIMEOUT = 5
 
 
-VERBOSE = False
-VERBOSE_FAILURE = False
-COINBASE = createtxns2.genesis_txn1()
+VERBOSE = True
+VERBOSE_FAILURE = True
+COINBASE = createtxns.genesis_txn()

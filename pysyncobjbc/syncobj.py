@@ -594,9 +594,6 @@ class SyncObj(object):
         self._onTick(timeToWait)
 
     def _onTick(self, timeToWait=0.0):
-        #belcoin
-        self.try_process()
-        ###
 
         if not self.__isInitialized:
             if time.time() >= self.__lastInitTryTime + self.__conf.bindRetryTime:
@@ -718,6 +715,10 @@ class SyncObj(object):
                     node._destroy()
 
         self._poller.poll(timeToWait)
+
+        #belcoin
+        self.try_process()
+        ###
 
     def getStatus(self):
         """Dumps different debug info about cluster to dict and return it"""

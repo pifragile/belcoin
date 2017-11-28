@@ -186,8 +186,8 @@ class Storage(SyncObj):
                     return False, True
                 if txn.seq <= tx.seq:
                     return False, True
-                self.del_from_pending(tx)
-                return True, True
+                # self.del_from_pending(tx)
+                return True, True, tx
         return True, False
 
 
@@ -295,6 +295,14 @@ class Storage(SyncObj):
 
     @replicated
     def add_block_to_queue(self, block):
+        self.current_time = block['time']
+        self.update_pend()
+        block = block['txns']
+        if VERBOSE:
+            print('received block {}'.format(b2hex(merkle_root(block))))
+        self.block_queue.append(block)
+
+    def add_block_to_queue_test(self, block):
         self.current_time = block['time']
         self.update_pend()
         block = block['txns']
@@ -539,9 +547,9 @@ class Storage(SyncObj):
             if VERBOSE:
                 print('\n')
 
-            # if VERBOSE:
-            #     self.print_balances()
-            #     print('\n')
+            if VERBOSE:
+                self.print_balances()
+                print('\n')
 
         print('finished block {}'.format(b2hex(merkle_root(block))))
         print('txns accepted / processed : {} / {}'.format(str(
@@ -702,6 +710,8 @@ class Storage(SyncObj):
             self.remove_invalid_txn_from_mempool(txid)
             return False
 
+        if check and check[0] and check[1]:
+            self.del_from_pending(check[2])
         return True
 
     def remove_invalid_txn_from_mempool(self, txid):
