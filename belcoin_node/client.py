@@ -109,6 +109,18 @@ def call_utxos(port, addr):
     except Exception as err:
         print(err)
 
+def call_gettx(port, txid):
+    try:
+        proxy = Proxy('http://127.0.0.1:' + str(port) + '/')
+        if VERBOSE:
+            print('###Send gettx request ' + '127.0.0.1:' + str(
+            port) + '/')
+
+        d = proxy.callRemote('gettx', txid)
+        d.addCallbacks(printValue, printError)
+    except Exception as err:
+        print(err)
+
 def run():
         cmd = input('>>').split()
         if not cmd:
@@ -133,13 +145,12 @@ def run():
 
         elif cmd[0] == 'utxos':
             port = int(cmd[1])
-            print('###Sending utxo request to ' + '127.0.0.1:'+str(
-                port)+'/')
-            proxy = Proxy('http://127.0.0.1:' + str(port) + '/')
             reactor.callLater(0, call_utxos, port, pubkey_to_address(PUBS[
                                                                         int(
                                                                              cmd[
                                                                              2])]))
+        elif cmd[0] == "gettx":
+            reactor.callLater(0, call_gettx, int(cmd[1]), cmd[2])
 
         elif cmd[0] == 'txns':
             global num_txns

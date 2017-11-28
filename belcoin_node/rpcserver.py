@@ -108,7 +108,7 @@ class RPCServer(jsonrpc.JSONRPC):
         txnw = self.node.storage.db.get(hex2b(txid))
         if txnw is None:
             return {}
-
+        txnw = TxnWrapper.unserialize(SerializationBuffer(txnw))
         info = hex_bytes_in_dict(
             txnw.txn.to_dict())
 
