@@ -98,6 +98,19 @@ class Storage(SyncObj):
                           index_name)
                 continue
 
+    def utxos_for_pubkey(self, pubkey):
+        utxos = []
+        if pubkey not in self.pub_outs_pend and pubkey not in self.pub_outs:
+            return []
+
+        for (txid, i) in self.pub_outs:
+            ts = self[txid].timestamp / TIME_MULTIPLIER
+            utxos.append([txid, i, ts])
+
+        for (txid, i) in self.pub_outs_pend:
+            ts = self[txid].timestamp / TIME_MULTIPLIER
+            utxos.append([txid, i, ts])
+
     def get_balance(self, pubkey, index):
         """
         Returns the balances bal, bal_partial bal_htlc for a given public
