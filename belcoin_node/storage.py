@@ -218,8 +218,6 @@ class Storage(SyncObj):
 
 
 
-    #TODO check if should be replicated or not
-    #@replicated
     def update_pend(self):
         """
         Called by the RAFT leader periodically
@@ -227,8 +225,6 @@ class Storage(SyncObj):
         timelock exceeded and if yes, check if txn is valid and write to db
 
         """
-        #TODO make list ordered and stop when a txn was found, that cant be
-        # written
         for txid, txnw in self.pend.db:
             txnw = TxnWrapper.unserialize(SerializationBuffer(txnw))
             timestamp = txnw.timestamp
@@ -298,6 +294,10 @@ class Storage(SyncObj):
             self.add_block_to_queue(block)
 
     def try_process(self):
+        """
+        If not currently procesing, take a new block from the queue and
+        process it
+        """
         if not self.processing:
             if len(self.block_queue) > 0:
                 block = self.block_queue[0]
@@ -308,6 +308,10 @@ class Storage(SyncObj):
 
     @replicated
     def add_block_to_queue(self, block):
+        """
+        adds a given block to the queue, which stores all the blocks that
+        need to be processed
+        """
         self.current_time = block['time']
         self.update_pend()
         block = block['txns']
@@ -316,6 +320,9 @@ class Storage(SyncObj):
         self.block_queue.append(block)
 
     def add_block_to_queue_test(self, block):
+        """
+        Non replicated version of the above function for unit testing
+        """
         self.current_time = block['time']
         self.update_pend()
         block = block['txns']
