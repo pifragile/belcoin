@@ -4,7 +4,7 @@ from os.path import expanduser
 import errno
 import argparse
 import shutil
-from belcoin_node.config import BASE_PORT_RPC,BASE_PORT
+from belcoin_node.config import BASE_PORT_RPC,BASE_PORT, BASE_PORT_GRPC
 
 parser = argparse.ArgumentParser('Belcoin Node Tester')
 parser.add_argument('num_nodes', type=int,
@@ -47,10 +47,11 @@ for i in range(0, num_nodes):
     peers_str = ",".join(peers)
     peers_rpc_str = ",".join(peers_rpc)
     print(peers_str)
-    command = 'python belcoin_node/node.py {} {} {} {} {}'.format(i,
+    command = 'python belcoin_node/node.py {} {} {} {} {} {}'.format(i,
                                                             BASE_PORT_RPC+i,
                                                             peers_rpc_str,
                                                             addrs[i],
-                                                            peers_str)
+                                                            peers_str,
+                                                            BASE_PORT_GRPC+i)
     print(command)
     os.system("gnome-terminal -e 'bash -l -c \""+command+"; exec bash\"'")

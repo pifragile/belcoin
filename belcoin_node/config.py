@@ -1,6 +1,7 @@
 from test import createtxns,createtxns2
 BASE_PORT = 27870
 BASE_PORT_RPC = 7080
+BASE_PORT_GRPC = 5080
 
 BLOCK_TIMEOUT = 1000000000 #in ticks
 BLOCK_SIZE = 5 #in transactions
@@ -14,4 +15,4 @@ REQUEST_TXN_TIMEOUT = 5
 
 VERBOSE = True
 VERBOSE_FAILURE = True
-COINBASE = createtxns.genesis_txn()
+COINBASE = createtxns2.genesis_txn()

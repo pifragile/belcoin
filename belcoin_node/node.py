@@ -11,7 +11,7 @@ from threading import Thread
 
 class Node(object):
 
-    def __init__(self, self_address, partner_addrs, nid, peers_rpc):
+    def __init__(self, self_address, partner_addrs, nid, peers_rpc, grpc_port):
         self.storage = Storage(self_address, partner_addrs, nid, self)
         self.nid = nid
         self.address = self_address
@@ -31,28 +31,30 @@ def main():
                         help='Ports of the other nodes rpc ifaces')
     parser.add_argument('addr', help='Address for RAFT')
     parser.add_argument('peers', help='Addresses of peers for RAFT')
+    parser.add_argument('grpc_port', help='Port for grpc interface')
 
     args = parser.parse_args()
     nid = args.id
     rpc_port = args.rpc_port
     addr = args.addr
+    grpc_port = args.grpc_port
 
-    n = Node(addr, args.peers.split(','), nid, args.rpc_peers.split(','))
+    n = Node(addr, args.peers.split(','), nid, args.rpc_peers.split(','), grpc_port)
 
     reactor.listenTCP(rpc_port, server.Site(RPCServer(n)))
 
-    t = Thread(target=console,args=(n, nid, rpc_port, addr,))
+    t = Thread(target=console,args=(n, nid, rpc_port, addr,grpc_port))
     t.start()
-
     reactor.run()
 
 
 def cb(err, a):
     print('Adding Node:' +str(a))
 
-def console(n,nid,rpc_port,addr):
+def console(n,nid,rpc_port,addr,grpc_port):
     print('Node {} listening for RPC messages on port {} and is connected to '
-          'the consensus network with address {}'.format(nid,rpc_port,addr))
+          'the consensus network with address {} and on the GRPC '
+          'interface on port {}'.format(nid,rpc_port,addr,grpc_port))
     print('Use \'add\' to add a node (not really working yet)')
     print('Use \'status\' to get node status)')
     while True:
