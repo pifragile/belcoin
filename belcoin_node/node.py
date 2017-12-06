@@ -1,3 +1,5 @@
+import time
+
 from belcoin_node.storage import Storage
 from belcoin_node.rpcserver import RPCServer
 from twisted.web import server
@@ -8,7 +10,7 @@ import argparse
 from threading import Thread
 import grpc
 from concurrent import futures
-from tesseract.proto3 import node_interface_pb2_grpc
+from tesseract.generated import node_interface_pb2_grpc
 from belcoin_node.grpcinterface import GRPCInterface
 
 
@@ -46,10 +48,12 @@ def main():
 
     n = Node(addr, args.peers.split(','), nid, args.rpc_peers.split(','), grpc_port)
     n.rpc_server = RPCServer(n)
-    serve(n, grpc_port)
     reactor.listenTCP(rpc_port, server.Site(n.rpc_server))
-    t = Thread(target=console,args=(n, nid, rpc_port, addr,grpc_port))
+    t = Thread(target=console, args=(n, nid, rpc_port, addr, grpc_port))
     t.start()
+    t2 = Thread(target=serve, args=(n, grpc_port))
+    t2.start()
+
     reactor.run()
 
 
@@ -75,12 +79,15 @@ def console(n,nid,rpc_port,addr,grpc_port):
         else:
             continue
 
+
 def serve(node, port):
   server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
   node_interface_pb2_grpc.add_NodeInterfaceServicer_to_server(
       GRPCInterface(node), server)
   server.add_insecure_port('[::]:'+str(port))
   server.start()
+  while True:
+      time.sleep(100000)
 
 if __name__ == "__main__":
     main()

@@ -289,7 +289,7 @@ class Storage(SyncObj):
             reactor.run()
         else:
             for addr in list(self.bcnode.rpc_peers.values()):#[:2]:
-                reactor.callLater(0, self.send_txn, addr, txn)
+                reactor.callFromThread(self.send_txn, addr, txn)
 
 
     def send_block(self):
@@ -442,7 +442,7 @@ class Storage(SyncObj):
             reactor.callWhenRunning(self.request_missing_transaction, txnid)
             reactor.run()
         else:
-                reactor.callLater(0, self.req_txn, txnid, i)
+                reactor.callFromThread(self.req_txn, txnid, i)
 
 
 
@@ -582,7 +582,7 @@ class Storage(SyncObj):
                 print('\n')
 
             if VERBOSE:
-                self.print_balances()
+                #self.print_balances()
                 print('\n')
 
         print('finished block {}'.format(b2hex(merkle_root(block))))

@@ -1,11 +1,11 @@
-from tesseract.proto3.node_interface_pb2_grpc import NodeInterfaceServicer
-from tesseract.proto3.node_interface_pb2 import GetTXResponse, \
+from tesseract.generated.node_interface_pb2_grpc import NodeInterfaceServicer
+from tesseract.generated.node_interface_pb2 import GetTXResponse, \
     GetUTXOsResponse, SendTXResponse, UTXO
 
 from tesseract.util import hex2b, b2hex
 from tesseract.serialize import SerializationBuffer
 from belcoin_node.txnwrapper import TxnWrapper
-
+from belcoin_node.config import TIME_MULTIPLIER
 
 class GRPCInterface(NodeInterfaceServicer):
     def __init__(self, node):
@@ -14,22 +14,39 @@ class GRPCInterface(NodeInterfaceServicer):
 
     def GetTX(self, request, context):
         txid = request.txid
-        txnw = self.node.storage.db.get(hex2b(txid))
+        txnw = self.node.storage.db.get(txid)
         if txnw is None:
-            return GetTXResponse(b'0', 0)
+            res = GetTXResponse()
+            res.tx = b'0'
+            res.blockheight = 0
+            return res
         txnw = TxnWrapper.unserialize(SerializationBuffer(txnw))
         txn = txnw.txn
 
-        return GetUTXOsResponse(txn.serialize_full(), txnw.timestamp)
+        res = GetTXResponse()
+        res.tx = txn.serialize_full().get_bytes()
+        res.blockheight = int(txnw.timestamp / TIME_MULTIPLIER)
+        return res
 
     def GetUTXOs(self, request, context):
         res = GetUTXOsResponse()
+        reslist = []
         utxos = self.node.storage.utxos_for_pubkey_grpc(request.pubkey)
         for u in utxos:
             o = u[2]
-            res.utxos.append(UTXO(u[0], u[1], o.amount, o.pubkey, o.pubkey2,
-                                  o.htlc_timeout, o.htlc_hashlock,
-                                  o.htlc_pubkey, u[3]))
+            utxo = UTXO()
+            utxo.txid = u[0]
+            print(u[1])
+            utxo.index = bytes(u[1])
+            utxo.amount = o.amount
+            utxo.pubkey = o.pubkey
+            utxo.pubkey2 =o.pubkey2
+            utxo.htlc_timeout = o.htlc_timeout
+            utxo.htlc_hashlock = o.htlc_hashlock
+            utxo.htlc_pubkey = o.htlc_pubkey
+            utxo.blockheight = int(u[3] / TIME_MULTIPLIER)
+            reslist.append(utxo)
+        res.utxos.extend(reslist)
         return res
 
 
