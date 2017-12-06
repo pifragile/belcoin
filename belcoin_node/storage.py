@@ -111,6 +111,20 @@ class Storage(SyncObj):
                 utxos.append([txid, i, ts])
         return utxos
 
+    def utxos_for_pubkey_grpc(self, pubkey):
+        utxos = []
+        if pubkey in self.pub_outs:
+            for (txid, i) in self.pub_outs[pubkey]:
+                txnw = self[txid]
+                ts = txnw.timestamp
+                utxos.append([txid, i, txnw.txn.outputs[i], ts])
+        if pubkey in self.pub_outs_pend:
+            for (txid, i) in self.pub_outs_pend[pubkey]:
+                txnw = self.pend[txid]
+                ts = txnw.timestamp
+                utxos.append([txid, i, txnw.txn.outputs[i], ts])
+        return utxos
+
     def get_balance(self, pubkey, index):
         """
         Returns the balances bal, bal_partial bal_htlc for a given public

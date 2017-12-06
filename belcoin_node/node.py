@@ -6,6 +6,10 @@ from twisted.application import service, internet
 from twisted.internet import reactor
 import argparse
 from threading import Thread
+import grpc
+from concurrent import futures
+from tesseract.proto3 import node_interface_pb2_grpc
+from belcoin_node.grpcinterface import GRPCInterface
 
 
 
@@ -16,6 +20,7 @@ class Node(object):
         self.nid = nid
         self.address = self_address
         self.partner_addrs = partner_addrs
+        self.rpc_server = None
         self.rpc_peers = dict(zip(partner_addrs, peers_rpc))#raft addr=>rpc addr
         print(self.rpc_peers)
 
@@ -31,7 +36,7 @@ def main():
                         help='Ports of the other nodes rpc ifaces')
     parser.add_argument('addr', help='Address for RAFT')
     parser.add_argument('peers', help='Addresses of peers for RAFT')
-    parser.add_argument('grpc_port', help='Port for grpc interface')
+    parser.add_argument('grpc_port', type=int, help='Port for grpc interface')
 
     args = parser.parse_args()
     nid = args.id
@@ -40,9 +45,9 @@ def main():
     grpc_port = args.grpc_port
 
     n = Node(addr, args.peers.split(','), nid, args.rpc_peers.split(','), grpc_port)
-
-    reactor.listenTCP(rpc_port, server.Site(RPCServer(n)))
-
+    n.rpc_server = RPCServer(n)
+    serve(n, grpc_port)
+    reactor.listenTCP(rpc_port, server.Site(n.rpc_server))
     t = Thread(target=console,args=(n, nid, rpc_port, addr,grpc_port))
     t.start()
     reactor.run()
@@ -69,5 +74,13 @@ def console(n,nid,rpc_port,addr,grpc_port):
             print(n.storage.mempool)
         else:
             continue
+
+def serve(node, port):
+  server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+  node_interface_pb2_grpc.add_NodeInterfaceServicer_to_server(
+      GRPCInterface(node), server)
+  server.add_insecure_port('[::]:'+str(port))
+  server.start()
+
 if __name__ == "__main__":
     main()
