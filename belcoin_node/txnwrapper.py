@@ -27,7 +27,7 @@ class TxnWrapper:
         Returns:
             A TxnWrapper
         """
-        txn = Transaction.unserialize_full(buf)
+        txn = Transaction.unserialize(buf)
         ts = buf.read_varuint()
         utxos = []
         for _ in range(buf.read_varuint()):
@@ -48,7 +48,7 @@ class TxnWrapper:
         if buf is None:
             buf = SerializationBuffer()
 
-        self.txn.serialize_full(buf)
+        self.txn.serialize(buf)
         buf.write_varuint(self.timestamp)
         buf.write_varuint(len(self.utxos))
         for i in self.utxos:

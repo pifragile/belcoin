@@ -28,7 +28,7 @@ class RPCServer(jsonrpc.JSONRPC):
 
         t = hex2b(tx)
 
-        tx = Transaction.unserialize_full(SerializationBuffer(t))
+        tx = Transaction.unserialize(SerializationBuffer(t))
 
         if broadcast:
             if VERBOSE:
@@ -79,7 +79,7 @@ class RPCServer(jsonrpc.JSONRPC):
                 return 0
             txn = TxnWrapper.unserialize(SerializationBuffer(txnw)).txn
 
-        txn = b2hex(txn.serialize_full().get_bytes())
+        txn = b2hex(txn.serialize().get_bytes())
         return txn
 
     def jsonrpc_print_balances(self):
@@ -100,7 +100,7 @@ class RPCServer(jsonrpc.JSONRPC):
     def jsonrpc_sendrawtx(self, txn, broadcast=True):
         i = self.jsonrpc_puttxn(txn, broadcast)
         t = hex2b(txn)
-        txid = Transaction.unserialize_full(SerializationBuffer(t)).txid
+        txid = Transaction.unserialize(SerializationBuffer(t)).txid
         if i == 1:
             return "Txn {} was put in mempool".format(str(txid))
         else:

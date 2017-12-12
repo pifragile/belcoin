@@ -406,7 +406,7 @@ class Storage(SyncObj):
         #                 tx = txn_list[0]
         #         continue
         #
-        #     tx = Transaction.unserialize_full(SerializationBuffer(hex2b(response['result'])))
+        #     tx = Transaction.unserialize(SerializationBuffer(hex2b(response['result'])))
         #     i += 1
         #
         #
@@ -492,7 +492,7 @@ class Storage(SyncObj):
         if txn is None:#was invalid on other node
             tx = None
         else:
-            tx = Transaction.unserialize_full(SerializationBuffer(hex2b(txn)))
+            tx = Transaction.unserialize(SerializationBuffer(hex2b(txn)))
         if VERBOSE:
             print('node {} received txn {}'.format(self.nid,
                                                    b2hex(txid)))

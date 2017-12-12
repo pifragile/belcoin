@@ -25,7 +25,7 @@ class GRPCInterface(NodeInterfaceServicer):
         txn = txnw.txn
 
         res = GetTXResponse()
-        res.tx = txn.serialize_full().get_bytes()
+        res.tx = txn.serialize().get_bytes()
         res.blockheight = int(txnw.timestamp / TIME_MULTIPLIER)
         return res
 

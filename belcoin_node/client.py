@@ -141,7 +141,7 @@ def run():
             port = int(cmd[1])
             print('###Sending test transaction to ' + '127.0.0.1:'+str(
                 port)+'/')
-            txn = b2hex(Transaction([],[]).serialize_full().get_bytes())
+            txn = b2hex(Transaction([],[]).serialize().get_bytes())
             reactor.callLater(0, call_txn, port, txn)
 
         elif cmd[0] == 'utxos':
@@ -173,7 +173,7 @@ def test_txns():
         #time.sleep(0.1)
         txn = test_transactions[k]
         reactor.callLater(0, call_txn, BASE_PORT_RPC + randint(0, 3),
-                          b2hex(txn.serialize_full().get_bytes()))
+                          b2hex(txn.serialize().get_bytes()))
         k +=1
 
 def print_balances():

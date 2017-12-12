@@ -16,14 +16,14 @@ stub = node_interface_pb2_grpc.NodeInterfaceStub(channel)
 
 # for txn in createtxns2.generate_txns():
 #     req = SendTXRequest()
-#     req.tx = txn.serialize_full().get_bytes()
+#     req.tx = txn.serialize().get_bytes()
 #     stub.SendTX(req)
 #
 # time.sleep(20)
 
 # req = GetTXRequest()
 # req.txid = createtxns2.generate_txns()[0].txid
-# print(Transaction.unserialize_full(SerializationBuffer(stub.GetTX(
+# print(Transaction.unserialize(SerializationBuffer(stub.GetTX(
 #     req).tx)))
 
 req = GetUTXOsRequest()

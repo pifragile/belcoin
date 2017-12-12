@@ -310,7 +310,7 @@ class SyncObj(object):
             print('Transaction {} not found!'.format(b2hex(txnid)))
             return
 
-        txn = b2hex(txn.serialize_full().get_bytes())
+        txn = b2hex(txn.serialize().get_bytes())
         print('Sending transaction {} to {}'.format(b2hex(txnid), addr))
         for node in self.__nodes:
             if node.getAddress() == addr:
@@ -805,7 +805,7 @@ class SyncObj(object):
     def _onMessageReceived(self, nodeAddr, message):
         ###belcoin
         if message['type'] == 'broadcast_txn' or message['type'] == 'send_txn':
-            tx = Transaction.unserialize_full(SerializationBuffer(hex2b(message[
+            tx = Transaction.unserialize(SerializationBuffer(hex2b(message[
                                                                       'txn'])))
             print('node {} received txn {} from broadcast'.format(self.nid,
                                                    b2hex(tx.txid)))
