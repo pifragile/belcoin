@@ -7,11 +7,24 @@ from tesseract.serialize import SerializationBuffer
 from belcoin_node.txnwrapper import TxnWrapper
 from belcoin_node.config import TIME_MULTIPLIER
 
+from twisted.internet import reactor
+from twisted.internet.threads import blockingCallFromThread
+
+
+def _service_rpc(func):
+    """Decorator to log RPC calls and delegate them to the main thread to
+    avoid thread safety problems."""
+
+    def wrapped(self, *args, **kwargs):
+        return blockingCallFromThread(reactor, func, self, *args, **kwargs)
+    return wrapped
+
 class GRPCInterface(NodeInterfaceServicer):
     def __init__(self, node):
         super(GRPCInterface, self).__init__()
         self.node = node
 
+    @_service_rpc
     def GetTX(self, request, context):
         print('GetTX Request...')
         txid = request.txid
@@ -29,6 +42,7 @@ class GRPCInterface(NodeInterfaceServicer):
         res.blockheight = int(txnw.timestamp / TIME_MULTIPLIER)
         return res
 
+    @_service_rpc
     def GetUTXOs(self, request, context):
         #print('GetUTXOs Request...')
         res = GetUTXOsResponse()
@@ -50,7 +64,7 @@ class GRPCInterface(NodeInterfaceServicer):
         res.utxos.extend(reslist)
         return res
 
-
+    @_service_rpc
     def SendTX(self, request, context):
         print('SendTx...')
         txn = request.tx
