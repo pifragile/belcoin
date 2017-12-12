@@ -27,7 +27,9 @@ class RPCServer(jsonrpc.JSONRPC):
         '''
 
         t = hex2b(tx)
+
         tx = Transaction.unserialize_full(SerializationBuffer(t))
+
         if broadcast:
             if VERBOSE:
                 print('Txn {} received.'.format(b2hex(

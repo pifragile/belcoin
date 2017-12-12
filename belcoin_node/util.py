@@ -1,7 +1,7 @@
 from tesseract.transaction import Input,Output,Transaction, LOCK_PREIMAGE_LEN
 from tesseract.crypto import generate_keypair,sign, sha256
 from secrets import token_bytes
-
+from tesseract.address import address_to_pubkey
 from keys import pubs,privs
 manypubs = pubs.manypubs
 manyprivs = privs.manyprivs
@@ -18,7 +18,21 @@ HASHLOCKS = [b'\x8f\xe2#\t\x16\xc4\t\x06\x82\xa5\x06d!\xf4\xa7\xc1g\xb4,'
      b'#I\xe0\xbf\xa5I\xcb\x95\xd5\xf3v\xb6\x8d', b'\x1c\xccTf\xa7\x8e\xcbI\xfa1\xf4\xba\x9f\xb7\r\x13\xb2\xdf\x7f\xadw\x8c\x88We\x13\x9b\xd2X\xb3\xc3F', b'|m\x18\n/\x15\x1b\xb9\x0e\x0c\xca|j\xcfB~\xfdY\xf0\x82TSru04H\xcf\x1bUi_', b'\x9a\x8aqr\xb0\x9c\xc3[\xb4(\x84\xce\xdaf\x11\xd6\xbf\xd8t\xd1\xad\xe1\xbe/V\xc7\xccXz~\xff\x06', b'\\\x93\xf6 GN\\\x1fyU\x97\xac,Z\xad\xd1\x935_m\xf1\xbd\x1c{<\xfe\xa7X\xa2M\x1c\x81']
 PREIMAGES = [b'V^\x1a\xae\x95\xf3\x06\xb4\xab\x9cP\xd1\xaa\xf5S\xd5\x87\xfa\xc5\xd1\x9d\xda+\xd6d\xae\xd6S\xdd$_y', b"v'`\xc2t\xd9\xd7\xd9\xd34<>*,\x00\x07@\xc4\xc4)\xcf\xf5\x84\xad\xa4\x95\x95\xa6[\xa7+\xde", b'\xe1\x12g\x01\xca\t\xd8\x916\xd9\xab\x8e\xe5\xe1\x07\x91\x88\xacUdN\x8d\xe3\x9f1>\x88\xd0\x89\x11\xd0\x95', b'z%\xe0\x03\xe6s\x9c\x82b\x8c\xae\r<\x08.\xc3\xceR,\xac\x86!qs\x9a(\xeb\xd6\xc3\xb2\x98V', b'\xe4~\x81s\x7f\x9c\xc3\xea\x11\x08\xaf\\b\x10\x84\xa6\xb3[\x0f\x06\x1c\xcb>\xe1|7%\xc5!\x1b\xd6-']
 
+wallet_addresses = [
+     'VXRP4LL7BC762OPDF7AEZFDOLZHQ5TLWVK5N4J4BZYWDGRXH6AUWO6SWXGRYR5MZ',
+     'EQXMPI7RCZIGWCBSB3QYUMFD3E6XT6643NRWDH6N6F6Z4CDBLFW2ME24HRF54BYI',
+     'HNMSSA4RIAAWFECBD3BV4AFY57V4O6RSYZKASNPBMIZAMBUERV5YJAT2COGMNN5S',
+     'WAIXRHRGMMFQBCVFZ2DKPN7PFJ6NTQ7RZUD3ZCDDUZFE24GKPCVEQYSN2JG2H63T',
+     'T7JOHQLHCH5F6NQNMTJDXTUTR7RBT56EWERFJ2OMWCAOTTMO2ITG7AVJ4JLULGCW'
+]
 
+wallet_pubkeys = list(map(address_to_pubkey, wallet_addresses))
+
+outputs = [Output(1000, wallet_pubkeys[i], wallet_pubkeys[i]) for i in range(5)]
+outputs2 = [Output(500, wallet_pubkeys[i], wallet_pubkeys[i]) for i in range(5)]
+outputs3 = [Output(100, wallet_pubkeys[i], wallet_pubkeys[i]) for i in range(5)]
+
+wallet_genesis = Transaction([], outputs + outputs2 + outputs3)
 
 
 #generate secrets and preimages

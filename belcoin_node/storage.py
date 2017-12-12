@@ -173,7 +173,7 @@ class Storage(SyncObj):
                                                       'can ' \
                                                     'be '
                                                  'provided)']]
-        pok = self.pub_outs.keys()
+        pok = list(self.pub_outs.keys())
         for i in range(len(pok)):
             table_data.append([i] + self.get_balance(pok[i],self.pub_outs))
         table = AsciiTable(table_data)
@@ -186,7 +186,7 @@ class Storage(SyncObj):
                                                     'be '
 
                                                  'provided)']]
-        popk = self.pub_outs_pend.keys()
+        popk = list(self.pub_outs_pend.keys())
         for i in range(len(popk)):
             table_data.append([i] + self.get_balance(popk[i],
                                                      self.pub_outs_pend))
@@ -352,8 +352,6 @@ class Storage(SyncObj):
         If some txns were not in the mempool of this node, it sends a request to
         the leader to get the txn
         """
-        if VERBOSE:
-            print('received block {}'.format(b2hex(merkle_root(block))))
         self.missing_txns = []
         for txid in block:
             tx = [txn for txn in self.mempool if txn[0] == txid]
@@ -585,7 +583,7 @@ class Storage(SyncObj):
                 print('\n')
 
             if VERBOSE:
-                #self.print_balances()
+                self.print_balances()
                 print('\n')
 
         print('finished block {}'.format(b2hex(merkle_root(block))))
