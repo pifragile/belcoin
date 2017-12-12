@@ -3,6 +3,8 @@ from tesseract.crypto import generate_keypair,sign
 from belcoin_node.util import PRIVS, PUBS, HASHLOCKS, PREIMAGES
 
 
+
+
 def generate_txns():
     txns = []
     txid = genesis_txn().txid
@@ -59,7 +61,7 @@ def generate_many_txns():
 
 def generate_many_txns2():
     txns = []
-    prev_txns = genesis_txn1()
+    prev_txns = []#genesis_txn1()
     for i in range(1000):
         txid = prev_txns.txid
         txn = Transaction(
@@ -73,14 +75,32 @@ def generate_many_txns2():
 
     return txns
 
+
+def generate_txns_batch():
+    txns = []
+    gen_txns = genesis_txn_list_batch()
+    for j in range(100):
+        for i in range(len(PUBS)):
+            txn = Transaction(
+                [Input(gen_txns[100*j + i].txid, 0)],
+                [Output(1, PUBS[(i+1) % 100], PUBS[(i+1) % 100]),
+                 Output(999 - j, PUBS[i], PUBS[i])]
+            )
+            for inp in txn.inputs:
+                inp.signature = sign(txn.txid, PRIVS[i])
+                inp.signature2 = sign(txn.txid, PRIVS[i])
+            txns.append(txn)
+    return txns
+
+
 def genesis_txn():
     outputs = [Output(1000, PUBS[i], PUBS[i]) for i in range(len(PUBS))]
     return Transaction([], outputs)
 
-def genesis_txn1():
-    outputs = []
-    for _ in range(10):
-        outputs.extend([Output(1, PUBS[i], PUBS[i]) for i in range(len(
-                PUBS))])
 
-    return Transaction([], outputs)
+def genesis_txn_list_batch():
+    txns = []
+    for j in range(100):
+        txns.extend([Transaction([], [Output(1000 - j, PUBS[i], PUBS[i])]) for i
+                                     in range(len(PUBS))])
+    return txns

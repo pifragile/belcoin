@@ -1193,6 +1193,7 @@ class SyncObj(object):
             callback(oldState, newState)
 
     def __onLeaderChanged(self):
+        print('dfsdf')
         for id in sorted(self.__commandsWaitingReply):
             self.__commandsWaitingReply[id](None, FAIL_REASON.LEADER_CHANGED)
         self.__commandsWaitingReply = {}

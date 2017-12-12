@@ -2,7 +2,7 @@ from tesseract.generated.node_interface_pb2_grpc import NodeInterfaceServicer
 from tesseract.generated.node_interface_pb2 import GetTXResponse, \
     GetUTXOsResponse, SendTXResponse, UTXO
 
-from tesseract.util import hex2b, b2hex
+from tesseract.util import b2hex
 from tesseract.serialize import SerializationBuffer
 from belcoin_node.txnwrapper import TxnWrapper
 from belcoin_node.config import TIME_MULTIPLIER
@@ -19,6 +19,7 @@ def _service_rpc(func):
         return blockingCallFromThread(reactor, func, self, *args, **kwargs)
     return wrapped
 
+
 class GRPCInterface(NodeInterfaceServicer):
     def __init__(self, node):
         super(GRPCInterface, self).__init__()
@@ -26,7 +27,6 @@ class GRPCInterface(NodeInterfaceServicer):
 
     @_service_rpc
     def GetTX(self, request, context):
-        print('GetTX Request...')
         txid = request.txid
         txnw = self.node.storage.db.get(txid)
         if txnw is None:
@@ -44,7 +44,6 @@ class GRPCInterface(NodeInterfaceServicer):
 
     @_service_rpc
     def GetUTXOs(self, request, context):
-        #print('GetUTXOs Request...')
         res = GetUTXOsResponse()
         reslist = []
         utxos = self.node.storage.utxos_for_pubkey_grpc(request.pubkey)
@@ -66,7 +65,6 @@ class GRPCInterface(NodeInterfaceServicer):
 
     @_service_rpc
     def SendTX(self, request, context):
-        print('SendTx...')
         txn = request.tx
         self.node.rpc_server.jsonrpc_puttxn(b2hex(txn))
         return SendTXResponse()

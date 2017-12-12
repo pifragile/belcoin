@@ -14,6 +14,7 @@ from belcoin_node.util import PUBS,PRIVS,HASHLOCKS,PREIMAGES
 from belcoin_node.config import TIME_MULTIPLIER, COINBASE
 from belcoin_node.txnwrapper import TxnWrapper
 from belcoin_node.util import PUBS
+from test import createtxns2
 from tesseract.crypto import sign, sha256d
 from tesseract.transaction import Input,Output,Transaction
 import time
@@ -34,14 +35,14 @@ class Test_test(TestCase):
         while (time.time() < current_time + dt):
             pass
     def calculate_balances(self):
-        sum_bal = sum([sum(self.storage.get_balance(pub,
-                                                      self.storage.pub_outs))
-                            for pub in PUBS])
-        sum_bal_pend = sum([sum(self.storage.get_balance(pub,
-                                                      self.storage.pub_outs_pend))
-                            for pub in PUBS])
-        print (sum_bal_pend)
-        return sum_bal + sum_bal_pend
+        # sum_bal = sum([sum(self.storage.get_balance(pub,
+        #                                               self.storage.pub_outs))
+        #                     for pub in PUBS])
+        # sum_bal_pend = sum([sum(self.storage.get_balance(pub,
+        #                                               self.storage.pub_outs_pend))
+        #                     for pub in PUBS])
+        # return sum_bal + sum_bal_pend
+        pass
 
     def setUp(self):
 
@@ -389,3 +390,18 @@ class Test_test(TestCase):
             pass
         output = out.getvalue().strip()
         assert 'spent outputs' in output
+
+
+    def test_batch_for_profiler(self):
+        #For the test to work set COINBASE to
+        # createtxns2.genesis_txn_list_batch()
+
+        t = time.time()
+        txns = createtxns2.generate_txns_batch()
+        for txn in txns:
+            self.storage.mempool.append((txn.txid, txn))
+        self.storage.add_block_to_queue_test({'time': time.time(),
+                                              'txns': [tx.txid for tx in txns]})
+        self.storage.try_process()
+        print(time.time()-t)
+

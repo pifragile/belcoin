@@ -10,6 +10,7 @@ from belcoin_node.txnwrapper import TxnWrapper
 from belcoin_node.util import PUBS
 from belcoin_node.pendingdb import PendingDB
 from belcoin_node.config import VERBOSE, COINBASE
+from test import createtxns2
 from tesseract.serialize import SerializationBuffer
 from tesseract.transaction import Transaction,Input
 from tesseract.util import b2hex, hex2b
@@ -40,13 +41,15 @@ class Storage(SyncObj):
         self.block_queue = []
         self.processing_block = False
         self.current_time = 0
-        self.invalid_txns = []
+        self.invalid_txns = [] #TODO has to be flushed periodically
+        self.time_measurement = 0
+        self.txns_received = 0
 
         #create genesis transaction:
-        gentxn = COINBASE
-        if not gentxn.txid in self:
-            self[gentxn.txid] = TxnWrapper(
-                gentxn, 0)
+        for gentxn in COINBASE:
+            if not gentxn.txid in self:
+                self[gentxn.txid] = TxnWrapper(
+                    gentxn, 0)
 
         #create index pubkey ==> (txid, index)
         self.pub_outs = {}
@@ -169,7 +172,7 @@ class Storage(SyncObj):
         """
         print('Balances: ')
         table_data = [
-            ['Owner','Totally owned', 'Partially owned', 'HTLC (if secret '
+            ['Owner', 'Totally owned', 'Partially owned', 'HTLC (if secret '
                                                       'can ' \
                                                     'be '
                                                  'provided)']]
@@ -181,11 +184,11 @@ class Storage(SyncObj):
 
         print('Balances (pending): ')
         table_data = [
-            ['Owner','Totally owned', 'Partially owned', 'HTLC (if secret '
-                                                      'can ' \
-                                                    'be '
+            ['Owner',
+             'Totally owned',
+             'Partially owned',
+             'HTLC (if secret can be provided)']]
 
-                                                 'provided)']]
         popk = list(self.pub_outs_pend.keys())
         for i in range(len(popk)):
             table_data.append([i] + self.get_balance(popk[i],
@@ -316,6 +319,9 @@ class Storage(SyncObj):
         process it
         """
         if not self.processing:
+            # if self.txns_processed == 0:
+            #     self.time_measurement = time.time()
+
             if len(self.block_queue) > 0:
                 block = self.block_queue[0]
                 self.current_block = block
@@ -591,6 +597,10 @@ class Storage(SyncObj):
             self.txns_accepted), str(
             self.txns_processed)))
 
+        if self.txns_processed == len(createtxns2.generate_txns_batch()):
+            print('TIME ELAPSED: {}'.format(time.time() -
+                self.time_measurement))
+
         del self.block_queue[0]
         self.current_block = []
         self.processing = False
@@ -745,7 +755,7 @@ class Storage(SyncObj):
             self.remove_invalid_txn_from_mempool(txid)
             return False
 
-        if check and check[0] and check[1]:
+        if check_pend and check[0] and check[1]:
             self.del_from_pending(check[2])
         return True
 
