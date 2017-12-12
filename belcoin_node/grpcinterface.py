@@ -37,7 +37,7 @@ class GRPCInterface(NodeInterfaceServicer):
             utxo = UTXO()
             utxo.txid = u[0]
             print(u[1])
-            utxo.index = bytes(u[1])
+            utxo.index = u[1]
             utxo.amount = o.amount
             utxo.pubkey = o.pubkey
             utxo.pubkey2 =o.pubkey2
