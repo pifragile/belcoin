@@ -173,8 +173,9 @@ class Storage(SyncObj):
                                                       'can ' \
                                                     'be '
                                                  'provided)']]
-        for i in range(len(PUBS)):
-            table_data.append([i] + self.get_balance(PUBS[i],self.pub_outs))
+        pok = self.pub_outs.keys()
+        for i in range(len(pok)):
+            table_data.append([i] + self.get_balance(pok[i],self.pub_outs))
         table = AsciiTable(table_data)
         print(table.table)
 
@@ -183,9 +184,11 @@ class Storage(SyncObj):
             ['Owner','Totally owned', 'Partially owned', 'HTLC (if secret '
                                                       'can ' \
                                                     'be '
+
                                                  'provided)']]
-        for i in range(len(PUBS)):
-            table_data.append([i] + self.get_balance(PUBS[i],
+        popk = self.pub_outs_pend.keys()
+        for i in range(len(popk)):
+            table_data.append([i] + self.get_balance(popk[i],
                                                      self.pub_outs_pend))
         table = AsciiTable(table_data)
         print(table.table)
