@@ -25,7 +25,6 @@ class RPCServer(jsonrpc.JSONRPC):
         :param tx:
         :return: 1 if transaction was put, 0 if txn was already there
         '''
-
         if self.node.storage.txns_received == 0:
             self.node.storage.time_measurement = time.time()
             self.node.storage.txns_received += 1

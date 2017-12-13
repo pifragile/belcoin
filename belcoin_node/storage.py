@@ -22,6 +22,8 @@ from belcoin_node.config import BLOCK_SIZE, TIME_MULTIPLIER, TIMEOUT_CONST, \
 from twisted.internet import reactor
 from txjsonrpc.web.jsonrpc import Proxy
 from terminaltables import AsciiTable
+from twisted.internet.task import LoopingCall
+from threading import Thread
 
 
 
@@ -64,6 +66,10 @@ class Storage(SyncObj):
             txnw = TxnWrapper.unserialize(SerializationBuffer(txnw))
             txn = txnw.txn
             self.add_txn_to_balance_index(txn, self.pub_outs_pend)
+
+        lc = LoopingCall(self.try_process)
+        lc.start(1)
+
 
 
     def add_txn_to_balance_index(self, txn, index):
@@ -324,6 +330,8 @@ class Storage(SyncObj):
 
             if len(self.block_queue) > 0:
                 block = self.block_queue[0]
+                self.current_time = block['time']
+                block = block['txns']
                 self.current_block = block
                 self.processing = True
                 self.adding_block = False
@@ -335,11 +343,9 @@ class Storage(SyncObj):
         adds a given block to the queue, which stores all the blocks that
         need to be processed
         """
-        self.current_time = block['time']
         self.update_pend()
-        block = block['txns']
         if VERBOSE:
-            print('received block {}'.format(b2hex(merkle_root(block))))
+            print('received block {}'.format(b2hex(merkle_root(block['txns']))))
         self.block_queue.append(block)
 
     def add_block_to_queue_test(self, block):
@@ -523,7 +529,8 @@ class Storage(SyncObj):
                 self.process_block(self.current_block)
 
     def transaction_receive_error(self, err, i, txid):
-        print(err)
+        if VERBOSE:
+            print(err)
         self.request_missing_transaction(txid, i=i)
 
     def process_block(self, block):
@@ -602,6 +609,7 @@ class Storage(SyncObj):
                 self.time_measurement))
 
         del self.block_queue[0]
+        print('huhu')
         self.current_block = []
         self.processing = False
         self.processing_block = False

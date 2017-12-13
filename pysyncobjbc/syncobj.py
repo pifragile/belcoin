@@ -594,7 +594,7 @@ class SyncObj(object):
         self._onTick(timeToWait)
 
     def _onTick(self, timeToWait=0.0):
-
+        print(self.processing)
         if not self.__isInitialized:
             if time.time() >= self.__lastInitTryTime + self.__conf.bindRetryTime:
                 self.__initInTickThread()
@@ -717,7 +717,7 @@ class SyncObj(object):
         self._poller.poll(timeToWait)
 
         #belcoin
-        self.try_process()
+        #self.try_process()
         ###
 
     def getStatus(self):
@@ -1193,7 +1193,7 @@ class SyncObj(object):
             callback(oldState, newState)
 
     def __onLeaderChanged(self):
-        print('dfsdf')
+        print('LEADER change')
         for id in sorted(self.__commandsWaitingReply):
             self.__commandsWaitingReply[id](None, FAIL_REASON.LEADER_CHANGED)
         self.__commandsWaitingReply = {}

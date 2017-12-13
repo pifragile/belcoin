@@ -33,18 +33,19 @@ class SyncObjConf(object):
 
         #: After randomly selected timeout (in range from minTimeout to maxTimeout)
         #: leader considered dead, and leader election starts.
-        self.raftMinTimeout = kwargs.get('raftMinTimeout', 20)#was 0.4
+        self.raftMinTimeout = kwargs.get('raftMinTimeout', 0.4)#was 0.4
 
         #: Same as raftMinTimeout
-        self.raftMaxTimeout = kwargs.get('raftMaxTimeout', 21)#was 1.4
+        self.raftMaxTimeout = kwargs.get('raftMaxTimeout', 1.4)#was 1.4
 
         #: Interval of sending append_entries (ping) command.
         #: Should be less than raftMinTimeout.
-        self.appendEntriesPeriod = kwargs.get('appendEntriesPeriod', 0.1)
+        self.appendEntriesPeriod = kwargs.get('appendEntriesPeriod', 0.1)#was
+        #  0.1
 
         #: When no data received for connectionTimeout - connection considered dead.
         #: Should be more than raftMaxTimeout.
-        self.connectionTimeout = kwargs.get('connectionTimeout', 22)#was3.5
+        self.connectionTimeout = kwargs.get('connectionTimeout', 3.5)#was3.5
 
         #: Interval between connection attempts.
         #: Will try to connect to offline nodes each connectionRetryTime.
@@ -53,7 +54,8 @@ class SyncObjConf(object):
         #: When leader has no response from the majority of the cluster
         #: for leaderFallbackTimeout - it will fallback to follower state.
         #: Should be more than appendEntriesPeriod.
-        self.leaderFallbackTimeout = kwargs.get('leaderFallbackTimeout', 30.0)
+        self.leaderFallbackTimeout = kwargs.get('leaderFallbackTimeout',
+                                                30.0)#was 30
 
         #: Send multiple entries in a single command.
         #: Enabled (default) - improve overall performance (requests per second)

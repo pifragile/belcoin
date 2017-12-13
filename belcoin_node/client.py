@@ -45,14 +45,12 @@ num_bal = 0
 
 
 def printValue(value):
-    print("Result: %s" % str(value))
-    run()
+    if VERBOSE:
+        print("Result: %s" % str(value))
 
 
 def printError(error):
-    if VERBOSE:
-        print ('error', error)
-    run()
+    print ('error', error)
 
 def cont_txn(data):
     global num_txns
@@ -82,8 +80,9 @@ def call_txn(port,txn):
             port) + '/')
 
     d = proxy.callRemote('sendrawtx', txn, True)
+    d.addCallbacks(printValue, printError)
     d.addBoth(cont_txn)
-    test_txns()
+    # test_txns()
 
 def call_bal(port):
     try:
