@@ -139,7 +139,8 @@ class SyncObj(object):
         ###belcoin
         self.__tickctr = 0
         #self.bcnode = None
-        self.mempool = []
+        self.mempool = None
+        self.mempool_list = []
         self.nid = 0
         #self.db = None
         self.processing = False
@@ -631,8 +632,8 @@ class SyncObj(object):
             ###belcoin
             self.__tickctr += 1
             #self.update_pend()
-            if (self.__tickctr >= BLOCK_TIMEOUT and len(self.mempool) > 0) or \
-                            len(self.mempool) >= BLOCK_SIZE:
+            if (self.__tickctr >= BLOCK_TIMEOUT and len(self.mempool_list) > 0) or \
+                            len(self.mempool_list) >= BLOCK_SIZE:
 
                 if not self.processing and not self.adding_block:
                     self.adding_block = True

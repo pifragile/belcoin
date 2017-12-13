@@ -79,7 +79,7 @@ def generate_many_txns2():
 def generate_txns_batch():
     txns = []
     gen_txns = genesis_txn_list_batch()
-    for j in range(100):
+    for j in range(10):
         for i in range(len(PUBS)):
             txn = Transaction(
                 [Input(gen_txns[100*j + i].txid, 0)],
@@ -100,7 +100,7 @@ def genesis_txn():
 
 def genesis_txn_list_batch():
     txns = []
-    for j in range(100):
+    for j in range(10):
         txns.extend([Transaction([], [Output(1000 - j, PUBS[i], PUBS[i])]) for i
                                      in range(len(PUBS))])
     return txns

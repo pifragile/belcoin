@@ -25,6 +25,7 @@ from terminaltables import AsciiTable
 from twisted.internet.task import LoopingCall
 from threading import Thread
 from belcoin_node.config import test_transactions
+from belcoin_node.mempool import Mempool
 
 class Storage(SyncObj):
     def __init__(self, self_addr, partner_addrs, nid, node):
@@ -36,6 +37,7 @@ class Storage(SyncObj):
         self.db = plyvel.DB(join(expanduser('~/.belcoin'), 'db_'+str(nid)),
                             create_if_missing=True)
         self.pend = PendingDB(nid) #db of txns that have a timelock to wait
+        self.mempool = Mempool(nid)
         self.txns_processed = 0
         self.txns_accepted = 0
         self.missing_txns = []
@@ -308,8 +310,7 @@ class Storage(SyncObj):
         Called by the leader when a new block is ready
         Creates a block (=List of txn hashes) and initiates RAFT
         """
-        txns = self.mempool[:BLOCK_SIZE]
-        txs = [item[0] for item in txns]
+        txs = self.mempool_list[:BLOCK_SIZE]
         now = time.time() if time.time() > self.current_time else \
             self.current_time
         block = {'time': now, 'txns': txs}
@@ -365,8 +366,8 @@ class Storage(SyncObj):
         """
         self.missing_txns = []
         for txid in block:
-            tx = [txn for txn in self.mempool if txn[0] == txid]
-            if len(tx) == 0:
+            tx = self.mempool[txid]
+            if tx is None:
                 self.missing_txns.append(txid)
         if len(self.missing_txns) > 0:
                 self.request_missing_transactions()
@@ -440,8 +441,8 @@ class Storage(SyncObj):
         # conditions when leader changes in a bad moment
 
         if i % 5 == 0:
-            txn_list = [txn for txn in self.mempool if txn[0] == txnid]
-            if len(txn_list) > 0:
+            txn = self.mempool[txnid]
+            if txn is None:
                 if txnid in self.missing_txns:
                     self.missing_txns.remove(txnid)
                 if len(self.missing_txns) == 0:
@@ -508,9 +509,8 @@ class Storage(SyncObj):
             print('node {} received txn {}'.format(self.nid,
                                                    b2hex(txid)))
 
-        if len([txn for txn in self.mempool if txn[0] ==
-                txid]) == 0:
-            self.mempool.append((txid, tx))
+        if self.mempool[txid] is None:
+            self.add_to_mempool(tx)
             if VERBOSE:
                 print('Txn {} put in mempool on node {}.'.format(b2hex(
                     txid), self.nid))
@@ -545,12 +545,12 @@ class Storage(SyncObj):
         """
         self.processing_block = True
         for txid in block:
-            tx = [txn[1] for txn in self.mempool if txn[0] == txid]
+            tx = self.mempool[txid]
 
-            if len(tx) == 0:
+            if tx is None:
                 raise InvalidTransactionError(
                     "VERY STRANGE ERROR".format(self.nid))
-            txn = tx[0]
+            txn = tx
 
             if txn is None:
                 if VERBOSE:
@@ -590,7 +590,7 @@ class Storage(SyncObj):
             self.txns_processed+=1
 
             #remove txn from mempool
-            self.mempool = [txn for txn in self.mempool if txn[0] != txid]
+            self.remove_from_mempool(txid)
             if VERBOSE:
                 print('\n')
 
@@ -661,7 +661,7 @@ class Storage(SyncObj):
         if txid in self:
             if VERBOSE_FAILURE:
                 print('Trasaction {} is already stored'.format(b2hex(txid)))
-            self.mempool = [txn for txn in self.mempool if txn[0] != txid]
+            self.remove_from_mempool(txid)
             return False
 
         has_coins = 0
@@ -770,9 +770,17 @@ class Storage(SyncObj):
         remove a txn from mempool
         """
         self.invalid_txns.append(txid)
-        self.mempool = [txn for txn in self.mempool if txn[0] != txid]
+        self.remove_from_mempool(txid)
         if VERBOSE:
             print('\n')
+
+    def add_to_mempool(self, txn):
+        self.mempool[txn.txid] = txn
+        self.mempool_list.append(txn.txid)
+
+    def remove_from_mempool(self, txid):
+        del self.mempool[txid]
+        self.mempool_list.remove(txid)
 
 
     def __getitem__(self, key):

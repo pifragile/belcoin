@@ -40,10 +40,10 @@ class RPCServer(jsonrpc.JSONRPC):
             if VERBOSE:
                 print('Txn {} received from broadcast.'.format(b2hex(
                     tx.txid)))
-
-        if len([txn for txn in self.node.storage.mempool if txn[0] ==
-                tx.txid]) == 0:
-            self.node.storage.mempool.append((tx.txid, tx))
+        if self.node.storage.mempool is None:
+            raise Exception('mempool is none')
+        if self.node.storage.mempool[tx.txid] is None:
+            self.node.storage.add_to_mempool(tx)
             if VERBOSE:
                 print('Txn {} put in mempool.'.format(b2hex(
                     tx.txid)))
@@ -67,11 +67,8 @@ class RPCServer(jsonrpc.JSONRPC):
         if hex2b(txnid) in self.node.storage.invalid_txns:
             return None
 
-        txn = [txn[1] for txn in self.node.storage.mempool if txn[0] ==
-               hex2b(txnid)]
-        if len(txn) > 0:
-            txn = txn[0]
-        else:
+        txn = self.node.storage.mempool[hex2b(txnid)]
+        if txn is None:
             txnw = self.node.storage.db.get(hex2b(txnid))
             if txnw is None:
                 txnw = self.node.storage.pend.get(hex2b(txnid))
