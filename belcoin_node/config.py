@@ -5,7 +5,7 @@ BASE_PORT_RPC = 7080
 BASE_PORT_GRPC = 50050
 
 BLOCK_TIMEOUT = 1000000000 #in ticks
-BLOCK_SIZE = 100 #in transactions
+BLOCK_SIZE = 1000 #in transactions
 
 TIME_MULTIPLIER = 1000000000
 TIMEOUT_CONST = 1000000000
@@ -19,3 +19,5 @@ VERBOSE_FAILURE = False
 #Coinbase is list of coinbase txns
 #COINBASE = [wallet_genesis]
 COINBASE = createtxns2.genesis_txn_list_batch()
+
+test_transactions = createtxns2.generate_txns_batch()

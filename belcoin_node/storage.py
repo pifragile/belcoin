@@ -24,8 +24,7 @@ from txjsonrpc.web.jsonrpc import Proxy
 from terminaltables import AsciiTable
 from twisted.internet.task import LoopingCall
 from threading import Thread
-
-
+from belcoin_node.config import test_transactions
 
 class Storage(SyncObj):
     def __init__(self, self_addr, partner_addrs, nid, node):
@@ -604,12 +603,11 @@ class Storage(SyncObj):
             self.txns_accepted), str(
             self.txns_processed)))
 
-        if self.txns_processed == len(createtxns2.generate_txns_batch()):
+        if self.txns_processed == len(test_transactions):
             print('TIME ELAPSED: {}'.format(time.time() -
                 self.time_measurement))
 
         del self.block_queue[0]
-        print('huhu')
         self.current_block = []
         self.processing = False
         self.processing_block = False

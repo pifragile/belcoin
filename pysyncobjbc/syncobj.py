@@ -594,7 +594,6 @@ class SyncObj(object):
         self._onTick(timeToWait)
 
     def _onTick(self, timeToWait=0.0):
-        print(self.processing)
         if not self.__isInitialized:
             if time.time() >= self.__lastInitTryTime + self.__conf.bindRetryTime:
                 self.__initInTickThread()

@@ -9,6 +9,7 @@ from belcoin_node.util import PUBS
 from random import randint
 import time
 import argparse
+from belcoin_node.config import test_transactions
 
 # parser = argparse.ArgumentParser('Belcoin Client')
 # parser.add_argument('port', type=int,
@@ -17,26 +18,26 @@ import argparse
 # port = args.port
 k = 0
 b = 0
-test_transactions = createtxns2.generate_txns_batch()
-                    #createtxns.generate_txns()
-                    #createtxns.generate_pending_txns() +\
-                    #createtxns.generate_pending_txns2() #"+ \
-                    #createtxns2.generate_many_txns2()
-                    #createtxns2.generate_txns() +\
-                    #createtxns2.generate_many_txns()
-                    # createtxns2.generate_txns() + \
-                    #createtxns2.generate_many_txns() #+ \
-                    #createtxns2.generate_txns2()
-                    # createtxns.generate_htlc_txns() + \
-#                   createtxns.generate_htlc_txns2()
-                    #createtxns.generate_txns()
-                    #createtxns.generate_pending_txns() +\
-                    #createtxns.generate_conflicting_txn_pend()
-                    # createtxns.generate_pending_txns2()
-                    #createtxns.generate_partial_txns()
-                    # createtxns.generate_txns()+ \
-                    #createtxns.generate_conflicting_txns() + \
-                    #createtxns.generate_unbalaced_txn()
+# test_transactions = createtxns2.generate_txns_batch()
+#                     #createtxns.generate_txns()
+#                     #createtxns.generate_pending_txns() +\
+#                     #createtxns.generate_pending_txns2() #"+ \
+#                     #createtxns2.generate_many_txns2()
+#                     #createtxns2.generate_txns() +\
+#                     #createtxns2.generate_many_txns()
+#                     # createtxns2.generate_txns() + \
+#                     #createtxns2.generate_many_txns() #+ \
+#                     #createtxns2.generate_txns2()
+#                     # createtxns.generate_htlc_txns() + \
+# #                   createtxns.generate_htlc_txns2()
+#                     #createtxns.generate_txns()
+#                     #createtxns.generate_pending_txns() +\
+#                     #createtxns.generate_conflicting_txn_pend()
+#                     # createtxns.generate_pending_txns2()
+#                     #createtxns.generate_partial_txns()
+#                     # createtxns.generate_txns()+ \
+#                     #createtxns.generate_conflicting_txns() + \
+#                     #createtxns.generate_unbalaced_txn()
 
 num_txns = 0
 num_bal = 0
