@@ -146,6 +146,7 @@ class SyncObj(object):
         self.processing = False
         self.current_block = []
         self.adding_block = False
+        self.testing = False
         ###
 
         self.__consumers = consumers
@@ -635,7 +636,8 @@ class SyncObj(object):
             if (self.__tickctr >= BLOCK_TIMEOUT and len(self.mempool_list) > 0) or \
                             len(self.mempool_list) >= BLOCK_SIZE:
 
-                if not self.processing and not self.adding_block:
+                if not self.processing and not self.adding_block\
+                        and not self.testing:
                     self.adding_block = True
                     self.send_block()
                     self.__tickctr = 0

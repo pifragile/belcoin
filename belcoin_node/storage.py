@@ -47,6 +47,7 @@ class Storage(SyncObj):
         self.invalid_txns = [] #TODO has to be flushed periodically
         self.time_measurement = 0
         self.txns_received = 0
+        self.testing = False
 
         #create genesis transaction:
         for gentxn in COINBASE:
@@ -352,9 +353,7 @@ class Storage(SyncObj):
         """
         Non replicated version of the above function for unit testing
         """
-        self.current_time = block['time']
         self.update_pend()
-        block = block['txns']
         if VERBOSE:
             print('received block {}'.format(b2hex(merkle_root(block))))
         self.block_queue.append(block)

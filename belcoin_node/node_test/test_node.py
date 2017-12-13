@@ -3,7 +3,7 @@ import os
 import shutil
 from os.path import expanduser
 from unittest import TestCase
-
+from belcoin_node.config import test_transactions
 import errno
 
 import sys
@@ -35,16 +35,17 @@ class Test_test(TestCase):
         while (time.time() < current_time + dt):
             pass
     def calculate_balances(self):
-        # sum_bal = sum([sum(self.storage.get_balance(pub,
-        #                                               self.storage.pub_outs))
-        #                     for pub in PUBS])
-        # sum_bal_pend = sum([sum(self.storage.get_balance(pub,
-        #                                               self.storage.pub_outs_pend))
-        #                     for pub in PUBS])
-        # return sum_bal + sum_bal_pend
+        sum_bal = sum([sum(self.storage.get_balance(pub,
+                                                      self.storage.pub_outs))
+                            for pub in PUBS])
+        sum_bal_pend = sum([sum(self.storage.get_balance(pub,
+                                                      self.storage.pub_outs_pend))
+                            for pub in PUBS])
+        return sum_bal + sum_bal_pend
         pass
 
     def setUp(self):
+
 
         try:
             shutil.rmtree(expanduser('~/.belcoin'))
@@ -65,7 +66,7 @@ class Test_test(TestCase):
         self.storage = Storage('localhost:{}'.format(str(12345 + i)),
                                [], i,
                                None)
-
+        self.storage.testing = True
         self.sum = self.calculate_balances()
         i += 1
     def tearDown(self):
@@ -219,7 +220,7 @@ class Test_test(TestCase):
             inp.signature2 = sign(txn.txid, PRIVS[0])
 
         assert self.storage.verify_txn(txn)
-        self.storage.mempool.append((txn.txid, txn))
+        self.storage.add_to_mempool(txn)
         self.storage.add_block_to_queue_test({'time': time.time(), 'txns': [
             txn.txid]})
 
@@ -255,7 +256,7 @@ class Test_test(TestCase):
         for inp in txn.inputs:
             inp.signature = sign(txn.txid, PRIVS[0])
             inp.signature2 = sign(txn.txid, PRIVS[0])
-        self.storage.mempool.append((txn.txid, txn))
+        self.storage.add_to_mempool(txn)
         self.storage.add_block_to_queue_test({'time': time.time(), 'txns': [
             txn.txid]})
 
@@ -291,7 +292,7 @@ class Test_test(TestCase):
         for inp in txn.inputs:
             inp.signature = sign(txn.txid, PRIVS[0])
             inp.signature2 = sign(txn.txid, PRIVS[0])
-        self.storage.mempool.append((txn.txid, txn))
+        self.storage.add_to_mempool(txn)
         self.storage.add_block_to_queue_test({'time': time.time(), 'txns': [
             txn.txid]})
 
@@ -327,7 +328,7 @@ class Test_test(TestCase):
         for inp in txn.inputs:
             inp.signature = sign(txn.txid, PRIVS[0])
             inp.signature2 = sign(txn.txid, PRIVS[0])
-        self.storage.mempool.append((txn.txid, txn))
+        self.storage.add_to_mempool(txn)
         self.storage.add_block_to_queue_test({'time': time.time(), 'txns': [
             txn.txid]})
         self.busy_wait(2)
@@ -344,7 +345,7 @@ class Test_test(TestCase):
             inp.signature = sign(txn1.txid, PRIVS[0])
             inp.signature2 = sign(txn1.txid, PRIVS[0])
         #assert self.storage.verify_txn(txn1)
-        self.storage.mempool.append((txn1.txid, txn1))
+        self.storage.add_to_mempool(txn1)
         self.storage.add_block_to_queue_test({'time': time.time(), 'txns': [
             txn1.txid]})
         self.busy_wait(2)
@@ -364,7 +365,7 @@ class Test_test(TestCase):
         for inp in txn.inputs:
             inp.signature = sign(txn.txid, PRIVS[0])
             inp.signature2 = sign(txn.txid, PRIVS[0])
-        self.storage.mempool.append((txn.txid, txn))
+        self.storage.add_to_mempool(txn)
         self.storage.add_block_to_queue_test({'time': time.time(), 'txns': [
             txn.txid]})
 
@@ -381,7 +382,7 @@ class Test_test(TestCase):
             inp.signature = sign(txn1.txid, PRIVS[0])
             inp.signature2 = sign(txn1.txid, PRIVS[0])
 
-        self.storage.mempool.append((txn1.txid, txn1))
+        self.storage.add_to_mempool(txn1)
         self.storage.add_block_to_queue_test({'time': time.time(), 'txns': [
             txn1.txid]})
 
@@ -397,9 +398,9 @@ class Test_test(TestCase):
         # createtxns2.genesis_txn_list_batch()
 
         t = time.time()
-        txns = createtxns2.generate_txns_batch()
+        txns = test_transactions
         for txn in txns:
-            self.storage.mempool.append((txn.txid, txn))
+            self.storage.add_to_mempool(txn)
         self.storage.add_block_to_queue_test({'time': time.time(),
                                               'txns': [tx.txid for tx in txns]})
         self.storage.try_process()
