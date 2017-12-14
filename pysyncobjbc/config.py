@@ -63,7 +63,8 @@ class SyncObjConf(object):
         self.appendEntriesUseBatch = kwargs.get('appendEntriesUseBatch', True)
 
         #: Max number of bytes per single append_entries command.
-        self.appendEntriesBatchSizeBytes = kwargs.get('appendEntriesBatchSizeBytes', 2 ** 16)
+        self.appendEntriesBatchSizeBytes = kwargs.get(
+            'appendEntriesBatchSizeBytes', 2 ** 20)
 
         #: Bind address (address:port). Default - None.
         #: If None - selfAddress is used as bindAddress.

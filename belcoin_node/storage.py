@@ -48,6 +48,7 @@ class Storage(SyncObj):
         self.time_measurement = 0
         self.txns_received = 0
         self.testing = False
+        self.len_test = len(test_transactions)
 
         #create genesis transaction:
         for gentxn in COINBASE:
@@ -215,6 +216,7 @@ class Storage(SyncObj):
         have to match exactly.
         """
         for txid, txnw in self.pend.db:
+            print('huhuhu')
             txnw = TxnWrapper.unserialize(SerializationBuffer(txnw))
             tx = txnw.txn
 
@@ -355,7 +357,7 @@ class Storage(SyncObj):
         """
         self.update_pend()
         if VERBOSE:
-            print('received block {}'.format(b2hex(merkle_root(block))))
+            print('received block {}'.format(b2hex(merkle_root(block['txns']))))
         self.block_queue.append(block)
 
     def find_missing_transactions(self, block):
@@ -597,14 +599,17 @@ class Storage(SyncObj):
                 self.print_balances()
                 print('\n')
 
-        print('finished block {}'.format(b2hex(merkle_root(block))))
-        print('txns accepted / processed : {} / {}'.format(str(
-            self.txns_accepted), str(
-            self.txns_processed)))
+        if VERBOSE:
+            print('finished block {}'.format(b2hex(merkle_root(block))))
 
-        if self.txns_processed == len(test_transactions):
+
+        if self.txns_processed == self.len_test:
+            print('txns accepted / processed : {} / {}'.format(str(
+                self.txns_accepted), str(
+                self.txns_processed)))
             print('TIME ELAPSED: {}'.format(time.time() -
                 self.time_measurement))
+
 
         del self.block_queue[0]
         self.current_block = []
@@ -779,7 +784,10 @@ class Storage(SyncObj):
 
     def remove_from_mempool(self, txid):
         del self.mempool[txid]
-        self.mempool_list.remove(txid)
+        try:
+            self.mempool_list.remove(txid)
+        except Exception:
+            pass
 
 
     def __getitem__(self, key):

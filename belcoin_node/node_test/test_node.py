@@ -1,31 +1,31 @@
 import io
 import os
 import shutil
+import sys
+import time
+import gc
 from os.path import expanduser
 from unittest import TestCase
-from belcoin_node.config import test_transactions
 import errno
-
-import sys
-
-from belcoin_node.node import Node
+from belcoin_node.config import test_transactions
 from belcoin_node.storage import Storage
-from belcoin_node.util import PUBS,PRIVS,HASHLOCKS,PREIMAGES
+from belcoin_node.util import PRIVS, HASHLOCKS, PREIMAGES
 from belcoin_node.config import TIME_MULTIPLIER, COINBASE
 from belcoin_node.txnwrapper import TxnWrapper
 from belcoin_node.util import PUBS
-from test import createtxns2
 from tesseract.crypto import sign, sha256d
-from tesseract.transaction import Input,Output,Transaction
-import time
-import gc
-
-
+from tesseract.transaction import Input, Output, Transaction
 
 SO = sys.stdout
 i = 0
 
+
 class Test_test(TestCase):
+
+    """
+    For the tests to run, COINBASE has to be set to [createtxns.genesis_txn()]
+    in the belcoin_node.config file
+    """
 
     def get_time(self):
         return int(time.time() * TIME_MULTIPLIER)
@@ -34,6 +34,7 @@ class Test_test(TestCase):
         current_time = time.time()
         while (time.time() < current_time + dt):
             pass
+
     def calculate_balances(self):
         sum_bal = sum([sum(self.storage.get_balance(pub,
                                                       self.storage.pub_outs))
@@ -69,6 +70,7 @@ class Test_test(TestCase):
         self.storage.testing = True
         self.sum = self.calculate_balances()
         i += 1
+
     def tearDown(self):
         assert self.sum == self.calculate_balances()
         try:
@@ -79,7 +81,6 @@ class Test_test(TestCase):
         self.storage = None
         gc.collect()
         sys.stdout = SO
-
 
     def test_insert_in_db(self):
         txn = Transaction(
@@ -96,7 +97,7 @@ class Test_test(TestCase):
 
     def test_invalid_signatures(self):
         txn = Transaction(
-            [Input(COINBASE.txid, 0)],
+            [Input(COINBASE[0].txid, 0)],
             [Output(1000, PUBS[0], PUBS[0])]
         )
         for inp in txn.inputs:
@@ -111,10 +112,9 @@ class Test_test(TestCase):
         print(output)
         assert 'Invalid signatures' in output
 
-
     def test_invalid_input(self):
         txn = Transaction(
-            [Input(COINBASE.txid, 99999)],
+            [Input(COINBASE[0].txid, 99999)],
             [Output(1000, PUBS[0], PUBS[0])]
         )
         for inp in txn.inputs:
@@ -146,7 +146,7 @@ class Test_test(TestCase):
 
     def test_htlc_transactions_correct_preimage(self):
         txn = Transaction(
-            [Input(COINBASE.txid, 0)],
+            [Input(COINBASE[0].txid, 0)],
             [Output(100, PUBS[0], PUBS[0], 10, HASHLOCKS[0], PUBS[1])])
 
         for inp in txn.inputs:
@@ -167,7 +167,7 @@ class Test_test(TestCase):
 
     def test_htlc_transactions_wrong_preimage(self):
         txn = Transaction(
-            [Input(COINBASE.txid, 0)],
+            [Input(COINBASE[0].txid, 0)],
             [Output(100, PUBS[0], PUBS[0], 10, HASHLOCKS[0], PUBS[1])])
 
         for inp in txn.inputs:
@@ -193,7 +193,7 @@ class Test_test(TestCase):
 
     def test_unbalanced_transaction(self):
         txn = Transaction(
-            [Input(COINBASE.txid, 0)],
+            [Input(COINBASE[0].txid, 0)],
             [Output(100, PUBS[1], PUBS[1]),
              Output(501, PUBS[0], PUBS[0])]
         )
@@ -212,7 +212,7 @@ class Test_test(TestCase):
         sys.stdout = out
 
         txn = Transaction(
-            [Input(COINBASE.txid, 0)],
+            [Input(COINBASE[0].txid, 0)],
             [Output(1000, PUBS[0], PUBS[0])])
 
         for inp in txn.inputs:
@@ -223,13 +223,13 @@ class Test_test(TestCase):
         self.storage.add_to_mempool(txn)
         self.storage.add_block_to_queue_test({'time': time.time(), 'txns': [
             txn.txid]})
-
+        self.storage.try_process()
         time.sleep(1)
         while self.storage.processing:
             pass
 
         txn1 = Transaction(
-            [Input(COINBASE.txid, 0)],
+            [Input(COINBASE[0].txid, 0)],
             [Output(999, PUBS[0], PUBS[0]), Output(1, PUBS[0], PUBS[0])])
 
         for inp in txn1.inputs:
@@ -248,7 +248,7 @@ class Test_test(TestCase):
         sys.stdout = out
         self.storage.current_time = time.time()
         txn = Transaction(
-            [Input(COINBASE.txid, 0)],
+            [Input(COINBASE[0].txid, 0)],
             [Output(1000, PUBS[1], PUBS[1], 10, HASHLOCKS[0], PUBS[0])],
             seq=0,
             timelock=12
@@ -259,13 +259,13 @@ class Test_test(TestCase):
         self.storage.add_to_mempool(txn)
         self.storage.add_block_to_queue_test({'time': time.time(), 'txns': [
             txn.txid]})
-
+        self.storage.try_process()
         time.sleep(1)
         while self.storage.processing:
             pass
 
         txn1 = Transaction(
-            [Input(COINBASE.txid, 0)],
+            [Input(COINBASE[0].txid, 0)],
             [Output(1, PUBS[1], PUBS[1], 10, HASHLOCKS[0], PUBS[0]),
              Output(999, PUBS[1], PUBS[1], 10, HASHLOCKS[0], PUBS[0])],
             seq=0,
@@ -284,7 +284,7 @@ class Test_test(TestCase):
         sys.stdout = out
         self.storage.current_time = time.time()
         txn = Transaction(
-            [Input(COINBASE.txid, 0)],
+            [Input(COINBASE[0].txid, 0)],
             [Output(1000, PUBS[1], PUBS[1], 10, HASHLOCKS[0], PUBS[0])],
             seq=0,
             timelock=3
@@ -296,12 +296,12 @@ class Test_test(TestCase):
         self.storage.add_block_to_queue_test({'time': time.time(), 'txns': [
             txn.txid]})
 
-
+        self.storage.try_process()
         self.busy_wait(5)
         self.storage.current_time = time.time()
         self.storage.update_pend()
         txn1 = Transaction(
-            [Input(COINBASE.txid, 0)],
+            [Input(COINBASE[0].txid, 0)],
             [Output(1, PUBS[1], PUBS[1], 10, HASHLOCKS[0], PUBS[0]),
              Output(999, PUBS[1], PUBS[1], 10, HASHLOCKS[0], PUBS[0])],
             seq=1,
@@ -316,11 +316,11 @@ class Test_test(TestCase):
         assert 'spent outputs' in output
 
     def test_pending_transactions_ok(self):
-        out = io.StringIO()
-        sys.stdout = out
+        # out = io.StringIO()
+        # sys.stdout = out
         self.storage.current_time = time.time()
         txn = Transaction(
-            [Input(COINBASE.txid, 0)],
+            [Input(COINBASE[0].txid, 0)],
             [Output(1000, PUBS[1], PUBS[1], 10, HASHLOCKS[0], PUBS[0])],
             seq=0,
             timelock=3
@@ -331,11 +331,12 @@ class Test_test(TestCase):
         self.storage.add_to_mempool(txn)
         self.storage.add_block_to_queue_test({'time': time.time(), 'txns': [
             txn.txid]})
+        self.storage.try_process()
         self.busy_wait(2)
         self.calculate_balances()
         self.storage.current_time = time.time()
         txn1 = Transaction(
-            [Input(COINBASE.txid, 0)],
+            [Input(COINBASE[0].txid, 0)],
             [Output(1, PUBS[1], PUBS[1], 10, HASHLOCKS[0], PUBS[0]),
              Output(999, PUBS[1], PUBS[1], 10, HASHLOCKS[0], PUBS[0])],
             seq=2,
@@ -344,10 +345,11 @@ class Test_test(TestCase):
         for inp in txn1.inputs:
             inp.signature = sign(txn1.txid, PRIVS[0])
             inp.signature2 = sign(txn1.txid, PRIVS[0])
-        #assert self.storage.verify_txn(txn1)
+
         self.storage.add_to_mempool(txn1)
         self.storage.add_block_to_queue_test({'time': time.time(), 'txns': [
             txn1.txid]})
+        self.storage.try_process()
         self.busy_wait(2)
         while self.storage.processing:
             pass
@@ -357,7 +359,7 @@ class Test_test(TestCase):
         sys.stdout = out
         self.storage.current_time = time.time()
         txn = Transaction(
-            [Input(COINBASE.txid, 0)],
+            [Input(COINBASE[0].txid, 0)],
             [Output(1000, PUBS[1], PUBS[1], 10, HASHLOCKS[0], PUBS[0])],
             seq=0,
             timelock=3
@@ -368,11 +370,12 @@ class Test_test(TestCase):
         self.storage.add_to_mempool(txn)
         self.storage.add_block_to_queue_test({'time': time.time(), 'txns': [
             txn.txid]})
-
+        self.storage.try_process()
         self.busy_wait(4)
-
+        self.storage.current_time = time.time()
+        self.storage.update_pend()
         txn1 = Transaction(
-            [Input(COINBASE.txid, 0)],
+            [Input(COINBASE[0].txid, 0)],
             [Output(1, PUBS[1], PUBS[1], 10, HASHLOCKS[0], PUBS[0]),
              Output(999, PUBS[1], PUBS[1], 10, HASHLOCKS[0], PUBS[0])],
             seq=1,
@@ -385,17 +388,16 @@ class Test_test(TestCase):
         self.storage.add_to_mempool(txn1)
         self.storage.add_block_to_queue_test({'time': time.time(), 'txns': [
             txn1.txid]})
-
+        self.storage.try_process()
         time.sleep(1)
         while self.storage.processing:
             pass
         output = out.getvalue().strip()
         assert 'spent outputs' in output
 
-
     def test_batch_for_profiler(self):
         #For the test to work set COINBASE to
-        # createtxns2.genesis_txn_list_batch()
+        #createtxns2.genesis_txn_list_batch()
 
         t = time.time()
         txns = test_transactions

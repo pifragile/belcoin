@@ -30,7 +30,8 @@ except ImportError:  # python3
     def iteritems(v):
         return v.items()
 
-import pysyncobj.pickle as pickle
+#was pysyncobj before, changed by belcoin
+import pysyncobjbc.pickle as pickle
 
 from .dns_resolver import globalDnsResolver
 from .poller import createPoller
@@ -1195,7 +1196,6 @@ class SyncObj(object):
             callback(oldState, newState)
 
     def __onLeaderChanged(self):
-        print('LEADER change')
         for id in sorted(self.__commandsWaitingReply):
             self.__commandsWaitingReply[id](None, FAIL_REASON.LEADER_CHANGED)
         self.__commandsWaitingReply = {}
