@@ -19,8 +19,8 @@ TIMELOCK_CONST = 1000000000
 REQUEST_TXN_TIMEOUT = 5
 
 
-VERBOSE = True
-VERBOSE_FAILURE = True
+VERBOSE = False
+VERBOSE_FAILURE = False
 
 #Coinbase is list of coinbase txns
 #COINBASE = [wallet_genesis]

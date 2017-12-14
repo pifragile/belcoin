@@ -27,8 +27,18 @@ from threading import Thread
 from belcoin_node.config import test_transactions
 from belcoin_node.mempool import Mempool
 
+
 class Storage(SyncObj):
+    """
+    In this class the main logic of belcoin happens.
+    """
     def __init__(self, self_addr, partner_addrs, nid, node):
+        """
+        :param self_addr: String
+        :param partner_addrs: [String]
+        :param nid: Int
+        :param node: Node
+        """
         cfg = SyncObjConf(dynamicMembershipChange=True)
         super(Storage, self).__init__(self_addr, partner_addrs, cfg)
         self.addr = self_addr
@@ -73,12 +83,11 @@ class Storage(SyncObj):
         lc = LoopingCall(self.try_process)
         lc.start(1)
 
-
-
     def add_txn_to_balance_index(self, txn, index):
         """
         Adds a transaction txn to index index which is either pub_outs or
         pub_outs_pend
+
         """
         txid = txn.txid
         for i in range(len(txn.outputs)):

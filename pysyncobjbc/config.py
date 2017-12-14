@@ -64,7 +64,8 @@ class SyncObjConf(object):
 
         #: Max number of bytes per single append_entries command.
         self.appendEntriesBatchSizeBytes = kwargs.get(
-            'appendEntriesBatchSizeBytes', 2 ** 20)
+            'appendEntriesBatchSizeBytes', 2 ** 20) #was 2**16, needs to be
+        # adjusted if blocksize gets bigger
 
         #: Bind address (address:port). Default - None.
         #: If None - selfAddress is used as bindAddress.

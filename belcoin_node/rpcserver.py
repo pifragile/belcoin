@@ -2,11 +2,12 @@ from txjsonrpc.web import jsonrpc
 from tesseract.util import b2hex
 from tesseract.transaction import Transaction
 from tesseract.serialize import SerializationBuffer
-from tesseract.util import hex2b,hex_bytes_in_dict
+from tesseract.util import hex2b, hex_bytes_in_dict
 from tesseract.address import address_to_pubkey
 from belcoin_node.txnwrapper import TxnWrapper
-from belcoin_node.config import VERBOSE,TIME_MULTIPLIER
+from belcoin_node.config import VERBOSE, TIME_MULTIPLIER
 import time
+
 
 class RPCServer(jsonrpc.JSONRPC):
     def __init__(self, node):
@@ -22,7 +23,7 @@ class RPCServer(jsonrpc.JSONRPC):
     def jsonrpc_puttxn(self, tx, broadcast=True):
         '''
 
-        :param tx:
+        :param tx: Serialized Transaction in Hex format
         :return: 1 if transaction was put, 0 if txn was already there
         '''
         if self.node.storage.txns_received == 0:
@@ -61,7 +62,13 @@ class RPCServer(jsonrpc.JSONRPC):
             self.node.storage.broadcast_txn(b2hex(t))
         return rval
 
-    def jsonrpc_req_txn(self,txnid,addr):
+    def jsonrpc_req_txn(self, txnid, addr):
+        """
+        Used to request a transaction from a node
+
+        :param txnid: Transaction id in Hex format
+        :param addr: String
+        """
         if VERBOSE:
             print('Received Request for txn {} from {}'.format(txnid, addr))
         if hex2b(txnid) in self.node.storage.invalid_txns:
@@ -85,6 +92,10 @@ class RPCServer(jsonrpc.JSONRPC):
         self.node.storage.print_balances()
 
     def jsonrpc_getutxos(self, addresses):
+        """
+        Request all UTXOS for addresses
+        :param addresses: List of addresses
+        """
         utxos_by_addr = {}
         for address in addresses:
             pubkey = address_to_pubkey(address)
@@ -97,6 +108,11 @@ class RPCServer(jsonrpc.JSONRPC):
         return utxos_by_addr
 
     def jsonrpc_sendrawtx(self, txn, broadcast=True):
+        """
+        Same as puttxn
+        :param txn: Serialized transaction in hex format
+        :param broadcast: Bool
+        """
         i = self.jsonrpc_puttxn(txn, broadcast)
         t = hex2b(txn)
         txid = Transaction.unserialize(SerializationBuffer(t)).txid
@@ -106,6 +122,11 @@ class RPCServer(jsonrpc.JSONRPC):
             return "Txn {} was  already in mempool".format(str(txid))
 
     def jsonrpc_gettx(self, txid):
+        """
+        Used to get a transaction from th node
+        :param txid: Transaction id in hex format
+        :return:
+        """
         txnw = self.node.storage.db.get(hex2b(txid))
         if txnw is None:
             return {}
