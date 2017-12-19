@@ -60,7 +60,7 @@ def main():
     t.start()
     t2 = Thread(target=serve, args=(n, grpc_port))
     t2.start()
-
+    print('dbg')
     reactor.run()
 
 
@@ -105,5 +105,6 @@ def serve(node, port):
   while True:
       time.sleep(100000)
 
+print(__name__)
 if __name__ == "__main__":
     main()

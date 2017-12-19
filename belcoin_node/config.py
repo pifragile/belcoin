@@ -24,12 +24,11 @@ VERBOSE_FAILURE = False
 
 #Coinbase is list of coinbase txns
 #COINBASE = [wallet_genesis]
-#COINBASE = createtxns2.genesis_txn_list_batch()
-COINBASE = [createtxns.genesis_txn()]
+COINBASE = createtxns2.genesis_txn_list_batch()
+#COINBASE = [createtxns.genesis_txn()]
 
 #read 10000 test transactions from file
-fileDir = os.path.dirname(os.path.realpath('__file__'))
-f = open('/home/pigu/belcoin/test/txns_1.txt', 'r')
+f = open('txns_1.txt', 'r')
 content = f.readlines()
 f.close()
 content = [Transaction.unserialize(SerializationBuffer(hex2b(x.strip())))

@@ -838,6 +838,8 @@ class Storage(SyncObj):
         except Exception:
             pass
 
+
+
     def __getitem__(self, key):
         obj = self.get(key)
         if obj is None:

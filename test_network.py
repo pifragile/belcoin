@@ -1,4 +1,5 @@
 from belcoin_node.node import Node
+import time
 import os
 from os.path import expanduser
 import errno
@@ -47,11 +48,23 @@ for i in range(0, num_nodes):
     peers_str = ",".join(peers)
     peers_rpc_str = ",".join(peers_rpc)
     print(peers_str)
-    command = 'python belcoin_node/node.py {} {} {} {} {} {}'.format(i,
-                                                            BASE_PORT_RPC+i,
-                                                            peers_rpc_str,
-                                                            addrs[i],
-                                                            peers_str,
-                                                            BASE_PORT_GRPC+i)
+    t = str(i)+"_"+str(int(time.time()))+".txt"
+    f = open("output/"+t, "w+")
+    f.write("")
+    f.close()
+
+    command = 'python belcoin_node/node.py {} {} {} {} {} {}' \
+              ' > output/'+t+' &'
+    command = command.format(i,
+                            BASE_PORT_RPC+i,
+                            peers_rpc_str,
+                            addrs[i],
+                            peers_str,
+                            BASE_PORT_GRPC+i)
     print(command)
-    os.system("gnome-terminal -e 'bash -l -c \""+command+"; exec bash\"'")
+    # import subprocess
+    #
+    # process = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
+    # output, error = process.communicate()
+
+    #os.system("gnome-terminal -e 'bash -l -c \""+command+"; exec bash\"'")
