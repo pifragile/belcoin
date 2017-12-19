@@ -62,6 +62,18 @@ class RPCServer(jsonrpc.JSONRPC):
             self.node.storage.broadcast_txn(b2hex(t))
         return rval
 
+
+    def jsonrpc_puttxn_batch(self, txns, broadcast = True):
+
+        if self.node.storage.txns_received == 0:
+            self.node.storage.time_measurement = time.time()
+            self.node.storage.txns_received += 1
+        if broadcast:
+            self.node.storage.broadcast_txn_batch(txns)
+        for txn in txns:
+            self.jsonrpc_puttxn(txn, broadcast = False)
+
+
     def jsonrpc_req_txn(self, txnid, addr):
         """
         Used to request a transaction from a node

@@ -15,7 +15,9 @@ from tesseract.serialize import SerializationBuffer
 from tesseract.transaction import Transaction,Input
 from tesseract.util import b2hex, hex2b
 from tesseract.exceptions import InvalidTransactionError
-from tesseract.crypto import verify_sig, NO_HASH, merkle_root, sha256
+from tesseract.crypto import NO_HASH, merkle_root, sha256
+from belcoin_node.crypto.crypto import verify_sig
+
 from pysyncobjbc import SyncObj, SyncObjConf, replicated
 from belcoin_node.config import BLOCK_SIZE, TIME_MULTIPLIER, TIMEOUT_CONST, \
     TIMELOCK_CONST, REQUEST_TXN_TIMEOUT, VERBOSE_FAILURE
@@ -331,6 +333,17 @@ class Storage(SyncObj):
             for addr in list(self.bcnode.rpc_peers.values()):#[:2]:
                 reactor.callFromThread(self.send_txn, addr, txn)
 
+    def broadcast_txn_batch(self, txn):
+        """
+        Broadcasts a txn to all nodes rpc interfaces
+        :type txn: Serialized Transaction in hex format
+        """
+        if not reactor.running:
+            reactor.callWhenRunning(self.broadcast_txn_batch, txn)
+            reactor.run()
+        else:
+            for addr in list(self.bcnode.rpc_peers.values()):#[:2]:
+                reactor.callFromThread(self.send_txn_batch, addr, txn)
 
     def send_block(self):
         """
@@ -496,7 +509,7 @@ class Storage(SyncObj):
         """
         Callback to be called when an error happened while sending a txn
         """
-        #print(error)
+        print(error)
         pass
 
     def send_txn(self, addr, txn):
@@ -507,6 +520,17 @@ class Storage(SyncObj):
         """
         proxy = Proxy(addr)
         d = proxy.callRemote('puttxn', txn, False)
+        d.addCallbacks(self.transaction_sent,
+                       self.transaction_send_error)
+
+    def send_txn_batch(self, addr, txn):
+        """
+        send a txn to addr
+        :type addr: String
+        :type txn: Serialized Transaction in hex format
+        """
+        proxy = Proxy(addr)
+        d = proxy.callRemote('puttxn_batch', txn, False)
         d.addCallbacks(self.transaction_sent,
                        self.transaction_send_error)
 
