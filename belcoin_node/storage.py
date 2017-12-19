@@ -691,7 +691,8 @@ class Storage(SyncObj):
         4. If check_pend is True, check if there is a conflicting txn in
         pend( uses the same inputs) and if yes, if it can be replaced.
         5. Check if the transaction uses spent outputs
-        6. Check if the sum of all input amouts matches the sum of all output amounts
+        6. Check if the sum of all input amouts matches the sum of all output
+        amounts
 
         :param check_pend: True if checks concerning replacements in pend
         should be performed. Should be set to False if you want to verify
