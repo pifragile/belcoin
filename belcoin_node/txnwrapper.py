@@ -19,7 +19,7 @@ class TxnWrapper:
 
     @staticmethod
     def unserialize(buf):
-        """Create a transaction from a byte stream.
+        """Create a TxnWrapper from a byte stream.
 
         Args:
             buf: A SerializationBuffer to read from.

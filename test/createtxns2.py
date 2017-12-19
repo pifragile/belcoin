@@ -1,7 +1,7 @@
 from tesseract.transaction import Input,Output,Transaction
 from tesseract.crypto import generate_keypair,sign
 from belcoin_node.util import PRIVS, PUBS, HASHLOCKS, PREIMAGES
-
+from tesseract.util import b2hex
 
 
 
@@ -104,3 +104,19 @@ def genesis_txn_list_batch():
         txns.extend([Transaction([], [Output(1000 - j, PUBS[i], PUBS[i])]) for i
                                      in range(len(PUBS))])
     return txns
+
+
+
+#write transacions into file
+
+# f = open('genesis_1.txt','w')
+# txns = [b2hex(t.serialize().get_bytes()) for t in genesis_txn_list_batch()]
+# for t in txns:
+#     f.write("%s\n" % t)
+# f.close()
+
+# f = open('txns_1.txt','w')
+# txns = [b2hex(t.serialize().get_bytes()) for t in generate_txns_batch()]
+# for t in txns:
+#     f.write("%s\n" % t)
+# f.close()

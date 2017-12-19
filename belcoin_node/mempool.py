@@ -3,11 +3,12 @@ from os.path import join, expanduser
 from belcoin_node.txnwrapper import TxnWrapper
 from tesseract.serialize import SerializationBuffer
 from tesseract.util import b2hex
+from tesseract.transaction import Transaction
 
 
-class PendingDB(object):
+class Mempool(object):
     def __init__(self, nid):
-        self.db = plyvel.DB(join(expanduser('~/.belcoin'), 'db_pend_'+str(nid)),
+        self.db = plyvel.DB(join(expanduser('~/.belcoin'), 'db_mem_'+str(nid)),
                             create_if_missing=True)
 
     def get(self, key, default=None):
@@ -18,13 +19,13 @@ class PendingDB(object):
         if val is None:
             return default
 
-        return TxnWrapper.unserialize(SerializationBuffer(val))
+        return Transaction.unserialize(SerializationBuffer(val))
 
 
     def __getitem__(self, key):
         obj = self.get(key)
-        if obj is None:
-            raise KeyError('Key %s not found.' % (b2hex(key)))
+        # if obj is None:
+        #     raise KeyError('Key %s not found.' % (b2hex(key)))
         return obj
 
     def __setitem__(self, key, obj):

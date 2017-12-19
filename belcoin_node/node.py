@@ -14,10 +14,16 @@ from tesseract.generated import node_interface_pb2_grpc
 from belcoin_node.grpcinterface import GRPCInterface
 
 
-
 class Node(object):
 
     def __init__(self, self_address, partner_addrs, nid, peers_rpc, grpc_port):
+        """
+        :param self_address: String
+        :param partner_addrs: [String]
+        :param nid: Int
+        :param peers_rpc: [String]
+        :param grpc_port: Int
+        """
         self.storage = Storage(self_address, partner_addrs, nid, self)
         self.nid = nid
         self.address = self_address
@@ -28,6 +34,7 @@ class Node(object):
 
     def add_node(self, addr):
         self.storage.addNodeToCluster(addr, callback=cb)
+
 
 def main():
     parser = argparse.ArgumentParser('Belcoin Node')
@@ -60,7 +67,16 @@ def main():
 def cb(err, a):
     print('Adding Node:' +str(a))
 
-def console(n,nid,rpc_port,addr,grpc_port):
+
+def console(n, nid, rpc_port, addr, grpc_port):
+    """
+    :param n: Node
+    :param nid: Int
+    :param rpc_port: Int
+    :param addr: String
+    :param grpc_port: Int
+    :return:
+    """
     print('Node {} listening for RPC messages on port {} and is connected to '
           'the consensus network with address {} and on the GRPC '
           'interface on port {}'.format(nid,rpc_port,addr,grpc_port))
