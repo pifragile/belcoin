@@ -30,7 +30,6 @@ class Node(object):
         self.partner_addrs = partner_addrs
         self.rpc_server = None
         self.rpc_peers = dict(zip(partner_addrs, peers_rpc))#raft addr=>rpc addr
-        print(self.rpc_peers)
 
     def add_node(self, addr):
         self.storage.addNodeToCluster(addr, callback=cb)
@@ -56,8 +55,8 @@ def main():
     n = Node(addr, args.peers.split(','), nid, args.rpc_peers.split(','), grpc_port)
     n.rpc_server = RPCServer(n)
     reactor.listenTCP(rpc_port, server.Site(n.rpc_server))
-    t = Thread(target=console, args=(n, nid, rpc_port, addr, grpc_port))
-    t.start()
+    # t = Thread(target=console, args=(n, nid, rpc_port, addr, grpc_port))
+    # t.start()
     t2 = Thread(target=serve, args=(n, grpc_port))
     t2.start()
 

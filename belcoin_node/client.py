@@ -4,7 +4,7 @@ from tesseract.transaction import Transaction
 from tesseract.util import b2hex
 from tesseract.address import pubkey_to_address
 from test import createtxns,createtxns2
-from belcoin_node.config import BASE_PORT_RPC, VERBOSE
+from belcoin_node.config import BASE_PORT_RPC, VERBOSE, BATCH_SIZE
 from belcoin_node.util import PUBS
 from random import randint
 import time
@@ -42,7 +42,7 @@ b = 0
 num_txns = 0
 num_bal = 0
 
-BATCH_SIZE = 1000
+
 
 
 
@@ -67,7 +67,8 @@ def cont_txn_batch(data):
     global num_txns
     num_txns += BATCH_SIZE
     if num_txns == len(test_transactions):
-        run()
+        #run()
+        pass
     else:
         test_txns_batch()
 
@@ -212,8 +213,8 @@ def print_balances():
         reactor.callLater(0, call_bal, BASE_PORT_RPC + b)
         b += 1
 
-print('This is the client! Usage:')
-print('>> set port key value')
-print('>> get port key')
-reactor.callWhenRunning(run)
+# print('This is the client! Usage:')
+# print('>> set port key value')
+# print('>> get port key')
+reactor.callWhenRunning(test_txns_batch)
 reactor.run()

@@ -20,7 +20,8 @@ from belcoin_node.crypto.crypto import verify_sig
 
 from pysyncobjbc import SyncObj, SyncObjConf, replicated
 from belcoin_node.config import BLOCK_SIZE, TIME_MULTIPLIER, TIMEOUT_CONST, \
-    TIMELOCK_CONST, REQUEST_TXN_TIMEOUT, VERBOSE_FAILURE
+    TIMELOCK_CONST, REQUEST_TXN_TIMEOUT, VERBOSE_FAILURE, BACKOFF_AMOUNT, \
+    LOOPING_CALL_TIME
 from twisted.internet import reactor
 from txjsonrpc.web.jsonrpc import Proxy
 from terminaltables import AsciiTable
@@ -61,6 +62,7 @@ class Storage(SyncObj):
         self.txns_received = 0
         self.testing = False
         self.len_test = len(test_transactions)
+        self.missed_counter = 0
 
         #create genesis transaction:
         for gentxn in COINBASE:
@@ -83,7 +85,7 @@ class Storage(SyncObj):
             self.add_txn_to_balance_index(txn, self.pub_outs_pend)
 
         lc = LoopingCall(self.try_process)
-        lc.start(0.1)
+        lc.start(LOOPING_CALL_TIME)
 
     def add_txn_to_balance_index(self, txn, index):
         """
@@ -375,7 +377,23 @@ class Storage(SyncObj):
                 self.current_block = block
                 self.processing = True
                 self.adding_block = False
-                self.find_missing_transactions(self.current_block)
+
+                #test if there are transactions missing
+                #if yes backoff and give it another try
+                #if no process the block
+                self.missing_txns = []
+                for txid in block:
+                    tx = self.mempool[txid]
+                    if tx is None:
+                        self.missing_txns.append(txid)
+                if len(self.missing_txns) > 0:
+                    self.missed_counter += 1
+                    if self.missed_counter > BACKOFF_AMOUNT:
+                        self.missed_counter = 0
+                        self.find_missing_transactions(self.current_block)
+                    return
+                else:
+                    self.process_block(self.current_block)
 
     @replicated
     def add_block_to_queue(self, block):
