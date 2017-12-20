@@ -83,7 +83,7 @@ class Storage(SyncObj):
             self.add_txn_to_balance_index(txn, self.pub_outs_pend)
 
         lc = LoopingCall(self.try_process)
-        lc.start(1)
+        lc.start(0.1)
 
     def add_txn_to_balance_index(self, txn, index):
         """
@@ -410,7 +410,7 @@ class Storage(SyncObj):
             if tx is None:
                 self.missing_txns.append(txid)
         if len(self.missing_txns) > 0:
-                self.request_missing_transactions()
+            self.request_missing_transactions()
         else:
             self.process_block(block)
 
@@ -484,7 +484,7 @@ class Storage(SyncObj):
 
         if i % 5 == 0:
             txn = self.mempool[txnid]
-            if txn is None:
+            if txn is not None:
                 if txnid in self.missing_txns:
                     self.missing_txns.remove(txnid)
                 if len(self.missing_txns) == 0:
@@ -492,6 +492,7 @@ class Storage(SyncObj):
                     #     return
                     if not self.processing_block:
                         self.process_block(self.current_block)
+                        return
 
         if not reactor.running:
             reactor.callWhenRunning(self.request_missing_transaction, txnid)
@@ -590,6 +591,7 @@ class Storage(SyncObj):
 
     def transaction_receive_error(self, err, i, txid):
         """Callback for errors while receiving a transaction"""
+        print(err)
         if VERBOSE:
             print(err)
         self.request_missing_transaction(txid, i=i)
