@@ -47,24 +47,29 @@ for i in range(0, num_nodes):
 
     peers_str = ",".join(peers)
     peers_rpc_str = ",".join(peers_rpc)
-    print(peers_str)
-    t = str(i)+"_"+str(int(time.time()))+".txt"
-    f = open("output/"+t, "w+")
-    f.write("")
-    f.close()
 
-    command = 'python belcoin_node/node.py {} {} {} {} {} {}' \
-              ' > output/'+t+' &'
+    #t = str(i)+"_"+str(int(time.time()))+".txt"
+    t = str(i) + ".txt"
+    # f = open("output/"+t, "w+")
+    # f.write("")
+    # f.close()
+
+    command = 'python ../node.py {} {} {} {} {} {}' \
+              ' &>> output/'+t+' &'
+    # command = 'python belcoin_node/node.py {} {} {} {} {} {}'
     command = command.format(i,
                             BASE_PORT_RPC+i,
                             peers_rpc_str,
                             addrs[i],
                             peers_str,
                             BASE_PORT_GRPC+i)
+
     print(command)
     # import subprocess
     #
     # process = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
     # output, error = process.communicate()
+    # print(output)
 
     #os.system("gnome-terminal -e 'bash -l -c \""+command+"; exec bash\"'")
+    #os.system(command)

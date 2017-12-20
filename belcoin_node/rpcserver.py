@@ -1,3 +1,5 @@
+import random
+
 from txjsonrpc.web import jsonrpc
 from tesseract.util import b2hex
 from tesseract.transaction import Transaction
@@ -62,6 +64,7 @@ class RPCServer(jsonrpc.JSONRPC):
 
 
     def jsonrpc_puttxn_batch(self, txns, broadcast = True):
+
         """
         Used to receive and broadcast batches of transactions, should be used
         if big loads of transactions are sent
@@ -70,6 +73,7 @@ class RPCServer(jsonrpc.JSONRPC):
         :param broadcast: True if the transactions should be broadcastetd
         :return: None
         """
+        time.sleep(random.uniform(0, 1) * 0.5)
         if self.node.storage.txns_received == 0:
             self.node.storage.time_measurement = time.time()
             self.node.storage.txns_received += 1
@@ -86,6 +90,7 @@ class RPCServer(jsonrpc.JSONRPC):
         :param txnid: Transaction id in Hex format
         :param addr: String
         """
+        time.sleep(random.uniform(0.08, 0.12))
         if VERBOSE:
             print('Received Request for txn {} from {}'.format(txnid, addr))
         if hex2b(txnid) in self.node.storage.invalid_txns:

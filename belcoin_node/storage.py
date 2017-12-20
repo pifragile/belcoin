@@ -83,7 +83,7 @@ class Storage(SyncObj):
             self.add_txn_to_balance_index(txn, self.pub_outs_pend)
 
         lc = LoopingCall(self.try_process)
-        lc.start(0.1)
+        lc.start(1)
 
     def add_txn_to_balance_index(self, txn, index):
         """
@@ -591,7 +591,6 @@ class Storage(SyncObj):
 
     def transaction_receive_error(self, err, i, txid):
         """Callback for errors while receiving a transaction"""
-        print(err)
         if VERBOSE:
             print(err)
         self.request_missing_transaction(txid, i=i)
@@ -667,11 +666,10 @@ class Storage(SyncObj):
             print('finished block {}'.format(b2hex(merkle_root(block))))
 
         if self.txns_processed == self.len_test:
-            print('txns accepted / processed : {} / {}'.format(str(
+            print('{} / {}  {}'.format(str(
                 self.txns_accepted), str(
-                self.txns_processed)))
-            print('TIME ELAPSED: {}'.format(time.time() -
-                self.time_measurement))
+                self.txns_processed), str(time.time() -
+                self.time_measurement)))
 
         del self.block_queue[0]
         self.current_block = []
