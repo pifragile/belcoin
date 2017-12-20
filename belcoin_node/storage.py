@@ -15,7 +15,9 @@ from tesseract.serialize import SerializationBuffer
 from tesseract.transaction import Transaction,Input
 from tesseract.util import b2hex, hex2b
 from tesseract.exceptions import InvalidTransactionError
-from tesseract.crypto import verify_sig, NO_HASH, merkle_root, sha256
+from tesseract.crypto import NO_HASH, merkle_root, sha256
+from belcoin_node.crypto.crypto import verify_sig
+
 from pysyncobjbc import SyncObj, SyncObjConf, replicated
 from belcoin_node.config import BLOCK_SIZE, TIME_MULTIPLIER, TIMEOUT_CONST, \
     TIMELOCK_CONST, REQUEST_TXN_TIMEOUT, VERBOSE_FAILURE
@@ -81,7 +83,7 @@ class Storage(SyncObj):
             self.add_txn_to_balance_index(txn, self.pub_outs_pend)
 
         lc = LoopingCall(self.try_process)
-        lc.start(1)
+        lc.start(0.1)
 
     def add_txn_to_balance_index(self, txn, index):
         """
@@ -331,6 +333,17 @@ class Storage(SyncObj):
             for addr in list(self.bcnode.rpc_peers.values()):#[:2]:
                 reactor.callFromThread(self.send_txn, addr, txn)
 
+    def broadcast_txn_batch(self, txn):
+        """
+        Broadcasts a txn to all nodes rpc interfaces
+        :type txn: Serialized Transaction in hex format
+        """
+        if not reactor.running:
+            reactor.callWhenRunning(self.broadcast_txn_batch, txn)
+            reactor.run()
+        else:
+            for addr in list(self.bcnode.rpc_peers.values()):#[:2]:
+                reactor.callFromThread(self.send_txn_batch, addr, txn)
 
     def send_block(self):
         """
@@ -397,7 +410,7 @@ class Storage(SyncObj):
             if tx is None:
                 self.missing_txns.append(txid)
         if len(self.missing_txns) > 0:
-                self.request_missing_transactions()
+            self.request_missing_transactions()
         else:
             self.process_block(block)
 
@@ -471,7 +484,7 @@ class Storage(SyncObj):
 
         if i % 5 == 0:
             txn = self.mempool[txnid]
-            if txn is None:
+            if txn is not None:
                 if txnid in self.missing_txns:
                     self.missing_txns.remove(txnid)
                 if len(self.missing_txns) == 0:
@@ -479,6 +492,7 @@ class Storage(SyncObj):
                     #     return
                     if not self.processing_block:
                         self.process_block(self.current_block)
+                        return
 
         if not reactor.running:
             reactor.callWhenRunning(self.request_missing_transaction, txnid)
@@ -496,7 +510,7 @@ class Storage(SyncObj):
         """
         Callback to be called when an error happened while sending a txn
         """
-        #print(error)
+        print(error)
         pass
 
     def send_txn(self, addr, txn):
@@ -507,6 +521,17 @@ class Storage(SyncObj):
         """
         proxy = Proxy(addr)
         d = proxy.callRemote('puttxn', txn, False)
+        d.addCallbacks(self.transaction_sent,
+                       self.transaction_send_error)
+
+    def send_txn_batch(self, addr, txn):
+        """
+        send a txn to addr
+        :type addr: String
+        :type txn: Serialized Transaction in hex format
+        """
+        proxy = Proxy(addr)
+        d = proxy.callRemote('puttxn_batch', txn, False)
         d.addCallbacks(self.transaction_sent,
                        self.transaction_send_error)
 
@@ -566,6 +591,7 @@ class Storage(SyncObj):
 
     def transaction_receive_error(self, err, i, txid):
         """Callback for errors while receiving a transaction"""
+        print(err)
         if VERBOSE:
             print(err)
         self.request_missing_transaction(txid, i=i)

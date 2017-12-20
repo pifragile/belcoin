@@ -41,8 +41,6 @@ class RPCServer(jsonrpc.JSONRPC):
             if VERBOSE:
                 print('Txn {} received from broadcast.'.format(b2hex(
                     tx.txid)))
-        if self.node.storage.mempool is None:
-            raise Exception('mempool is none')
         if self.node.storage.mempool[tx.txid] is None:
             self.node.storage.add_to_mempool(tx)
             if VERBOSE:
@@ -61,6 +59,25 @@ class RPCServer(jsonrpc.JSONRPC):
                     tx.txid)))
             self.node.storage.broadcast_txn(b2hex(t))
         return rval
+
+
+    def jsonrpc_puttxn_batch(self, txns, broadcast = True):
+        """
+        Used to receive and broadcast batches of transactions, should be used
+        if big loads of transactions are sent
+
+        :param txns: List of serialized transactions
+        :param broadcast: True if the transactions should be broadcastetd
+        :return: None
+        """
+        if self.node.storage.txns_received == 0:
+            self.node.storage.time_measurement = time.time()
+            self.node.storage.txns_received += 1
+        if broadcast:
+            self.node.storage.broadcast_txn_batch(txns)
+        for txn in txns:
+            self.jsonrpc_puttxn(txn, broadcast = False)
+
 
     def jsonrpc_req_txn(self, txnid, addr):
         """

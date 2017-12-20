@@ -1,6 +1,7 @@
 from tesseract.transaction import Input,Output,Transaction
 from tesseract.crypto import generate_keypair,sign
 from belcoin_node.util import PRIVS, PUBS, HASHLOCKS, PREIMAGES
+from belcoin_node.crypto.crypto import sign as sign2
 from tesseract.util import b2hex
 
 
@@ -79,7 +80,7 @@ def generate_many_txns2():
 def generate_txns_batch():
     txns = []
     gen_txns = genesis_txn_list_batch()
-    for j in range(10):
+    for j in range(100):
         for i in range(len(PUBS)):
             txn = Transaction(
                 [Input(gen_txns[100*j + i].txid, 0)],
@@ -92,6 +93,22 @@ def generate_txns_batch():
             txns.append(txn)
     return txns
 
+def generate_txns_batch_ll():
+    txns = []
+    gen_txns = genesis_txn_list_batch()
+    for j in range(100):
+        for i in range(len(PUBS)):
+            txn = Transaction(
+                [Input(gen_txns[100*j + i].txid, 0)],
+                [Output(1, PUBS[(i+1) % 100], PUBS[(i+1) % 100]),
+                 Output(999 - j, PUBS[i], PUBS[i])]
+            )
+            for inp in txn.inputs:
+                inp.signature = sign2(txn.txid, PRIVS[i])
+                inp.signature2 = sign2(txn.txid, PRIVS[i])
+            txns.append(txn)
+    return txns
+
 
 def genesis_txn():
     outputs = [Output(1000, PUBS[i], PUBS[i]) for i in range(len(PUBS))]
@@ -100,7 +117,7 @@ def genesis_txn():
 
 def genesis_txn_list_batch():
     txns = []
-    for j in range(10):
+    for j in range(100):
         txns.extend([Transaction([], [Output(1000 - j, PUBS[i], PUBS[i])]) for i
                                      in range(len(PUBS))])
     return txns
@@ -109,7 +126,14 @@ def genesis_txn_list_batch():
 
 #write transacions into file
 
-# f = open('genesis_1.txt','w')
+f = open('txns_2.txt','w+')
+txns = [b2hex(t.serialize().get_bytes()) for t in generate_txns_batch_ll()]
+for t in txns:
+    f.write("%s\n" % t)
+f.close()
+
+
+    # f = open('genesis_1.txt','w')
 # txns = [b2hex(t.serialize().get_bytes()) for t in genesis_txn_list_batch()]
 # for t in txns:
 #     f.write("%s\n" % t)

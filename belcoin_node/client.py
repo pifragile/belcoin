@@ -42,6 +42,8 @@ b = 0
 num_txns = 0
 num_bal = 0
 
+BATCH_SIZE = 1000
+
 
 
 
@@ -60,6 +62,14 @@ def cont_txn(data):
         run()
     else:
         test_txns()
+
+def cont_txn_batch(data):
+    global num_txns
+    num_txns += BATCH_SIZE
+    if num_txns == len(test_transactions):
+        run()
+    else:
+        test_txns_batch()
 
 def cont_bal(data):
     try:
@@ -83,7 +93,18 @@ def call_txn(port,txn):
     d = proxy.callRemote('sendrawtx', txn, True)
     d.addCallbacks(printValue, printError)
     d.addBoth(cont_txn)
-    # test_txns()
+    test_txns()
+
+def call_txn_batch(port,txns):
+    proxy = Proxy('http://127.0.0.1:' + str(port) + '/')
+    if VERBOSE:
+        print('###Sending test transaction to ' + '127.0.0.1:' + str(
+            port) + '/')
+
+    d = proxy.callRemote('puttxn_batch', txns)
+    d.addCallbacks(printValue, printError)
+    d.addBoth(cont_txn_batch)
+    test_txns_batch()
 
 def call_bal(port):
     try:
@@ -159,7 +180,7 @@ def run():
             num_txns = 0
             k = 0
             try:
-                test_txns()
+                test_txns_batch()
             except Exception as err:
                 print(err)
         else:
@@ -168,13 +189,22 @@ def run():
 def test_txns():
     global k
     if k < len(test_transactions):
-        # if (k % 5) == 0 and k > 0:
-        #     time.sleep(10)
+        # if (k % 200) == 0 and k > 0:
+        #     time.sleep(0.5)
         #time.sleep(0.1)
         txn = test_transactions[k]
         reactor.callLater(0, call_txn, BASE_PORT_RPC + randint(0, 3),
                           b2hex(txn.serialize().get_bytes()))
         k +=1
+
+def test_txns_batch():
+    global k
+    if k < len(test_transactions):
+        if k % BATCH_SIZE == 0:
+            txns = test_transactions[k:k+BATCH_SIZE]
+            txns = [b2hex(txn.serialize().get_bytes()) for txn in txns]
+            reactor.callLater(0, call_txn_batch, BASE_PORT_RPC + randint(0, 3), txns)
+            k += BATCH_SIZE
 
 def print_balances():
     global b
