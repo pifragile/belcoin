@@ -5,6 +5,9 @@ from belcoin_node.crypto.crypto import sign as sign2
 from tesseract.util import b2hex
 
 
+"""
+This File is used to generate Transactions for testing purposes
+"""
 
 def generate_txns():
     txns = []

@@ -21,6 +21,9 @@ def _service_rpc(func):
 
 
 class GRPCInterface(NodeInterfaceServicer):
+    """
+    This is the GRPC Interface for communication with Tesseract Wallet
+    """
     def __init__(self, node):
         super(GRPCInterface, self).__init__()
         self.node = node

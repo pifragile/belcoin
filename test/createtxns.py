@@ -2,7 +2,9 @@ from tesseract.transaction import Input,Output,Transaction
 from tesseract.crypto import generate_keypair,sign
 from belcoin_node.util import PRIVS, PUBS, HASHLOCKS, PREIMAGES
 
-
+"""
+This File is used to generate Transactions for testing purposes
+"""
 def generate_txns():
     txns = []
     txid = genesis_txn().txid

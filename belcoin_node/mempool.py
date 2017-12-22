@@ -7,6 +7,9 @@ from tesseract.transaction import Transaction
 
 
 class Mempool(object):
+    """
+    Level DB Instanace for the Mempool
+    """
     def __init__(self, nid):
         self.db = plyvel.DB(join(expanduser('~/.belcoin'), 'db_mem_'+str(nid)),
                             create_if_missing=True)

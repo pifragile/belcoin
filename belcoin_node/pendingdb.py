@@ -6,6 +6,9 @@ from tesseract.util import b2hex
 
 
 class PendingDB(object):
+    """
+    Instance of Level DB for the Database with pending Transactions
+    """
     def __init__(self, nid):
         self.db = plyvel.DB(join(expanduser('~/.belcoin'), 'db_pend_'+str(nid)),
                             create_if_missing=True)

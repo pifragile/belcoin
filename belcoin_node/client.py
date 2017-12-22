@@ -10,6 +10,9 @@ from random import randint
 import time
 import argparse
 from belcoin_node.config import test_transactions
+"""
+THIS FILE WAS ONLY USED FOR TESTING PURPOSES
+"""
 
 # parser = argparse.ArgumentParser('Belcoin Client')
 # parser.add_argument('port', type=int,
@@ -204,7 +207,9 @@ def test_txns_batch():
         if k % BATCH_SIZE == 0:
             txns = test_transactions[k:k+BATCH_SIZE]
             txns = [b2hex(txn.serialize().get_bytes()) for txn in txns]
-            reactor.callLater(0, call_txn_batch, BASE_PORT_RPC + randint(0, 3), txns)
+            reactor.callLater(0, call_txn_batch, BASE_PORT_RPC + randint(0,
+                                                                         2),
+                              txns)
             k += BATCH_SIZE
 
 def print_balances():
