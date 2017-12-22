@@ -807,6 +807,9 @@ class SyncObj(object):
 
     def _onMessageReceived(self, nodeAddr, message):
         ###belcoin
+
+        ###
+        ###belcoin
         if message['type'] == 'broadcast_txn' or message['type'] == 'send_txn':
             tx = Transaction.unserialize(SerializationBuffer(hex2b(message[
                                                                       'txn'])))
