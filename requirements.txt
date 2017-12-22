@@ -1,4 +1,3 @@
-tesseract.egg==info
 plyvel==0.9
 requests==2.9.1
 Twisted==17.5.0
