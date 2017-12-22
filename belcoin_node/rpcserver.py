@@ -1,3 +1,5 @@
+import random
+
 from txjsonrpc.web import jsonrpc
 from tesseract.util import b2hex
 from tesseract.transaction import Transaction
@@ -5,7 +7,8 @@ from tesseract.serialize import SerializationBuffer
 from tesseract.util import hex2b, hex_bytes_in_dict
 from tesseract.address import address_to_pubkey
 from belcoin_node.txnwrapper import TxnWrapper
-from belcoin_node.config import VERBOSE, TIME_MULTIPLIER
+from belcoin_node.config import VERBOSE, TIME_MULTIPLIER, ADD_NETWORK_DELAY, \
+    NETWORK_DELAY_MIN, NETWORK_DELAY_MAX
 import time
 
 
@@ -26,6 +29,7 @@ class RPCServer(jsonrpc.JSONRPC):
         :param tx: Serialized Transaction in Hex format
         :return: 1 if transaction was put, 0 if txn was already there
         '''
+
         if self.node.storage.txns_received == 0:
             self.node.storage.time_measurement = time.time()
             self.node.storage.txns_received += 1
@@ -62,6 +66,7 @@ class RPCServer(jsonrpc.JSONRPC):
 
 
     def jsonrpc_puttxn_batch(self, txns, broadcast = True):
+
         """
         Used to receive and broadcast batches of transactions, should be used
         if big loads of transactions are sent
@@ -70,6 +75,9 @@ class RPCServer(jsonrpc.JSONRPC):
         :param broadcast: True if the transactions should be broadcastetd
         :return: None
         """
+        if ADD_NETWORK_DELAY:
+            time.sleep(random.uniform(NETWORK_DELAY_MIN, NETWORK_DELAY_MAX))
+
         if self.node.storage.txns_received == 0:
             self.node.storage.time_measurement = time.time()
             self.node.storage.txns_received += 1
@@ -86,6 +94,8 @@ class RPCServer(jsonrpc.JSONRPC):
         :param txnid: Transaction id in Hex format
         :param addr: String
         """
+        if ADD_NETWORK_DELAY:
+            time.sleep(random.uniform(NETWORK_DELAY_MIN, NETWORK_DELAY_MAX))
         if VERBOSE:
             print('Received Request for txn {} from {}'.format(txnid, addr))
         if hex2b(txnid) in self.node.storage.invalid_txns:

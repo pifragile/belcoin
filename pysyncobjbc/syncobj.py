@@ -3,7 +3,8 @@ from tesseract.transaction import Transaction
 from tesseract.util import b2hex, hex2b
 from tesseract.serialize import SerializationBuffer
 from belcoin_node.txnwrapper import TxnWrapper
-from belcoin_node.config import VERBOSE
+from belcoin_node.config import VERBOSE, ADD_NETWORK_DELAY, NETWORK_DELAY_MIN, \
+    NETWORK_DELAY_MAX
 ###
 
 import time
@@ -807,7 +808,8 @@ class SyncObj(object):
 
     def _onMessageReceived(self, nodeAddr, message):
         ###belcoin
-
+        if ADD_NETWORK_DELAY:
+            time.sleep(random.uniform(NETWORK_DELAY_MIN, NETWORK_DELAY_MAX))
         ###
         ###belcoin
         if message['type'] == 'broadcast_txn' or message['type'] == 'send_txn':
