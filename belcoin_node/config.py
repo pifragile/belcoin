@@ -4,17 +4,18 @@ from tesseract.transaction import Transaction
 from tesseract.serialize import SerializationBuffer
 from tesseract.util import hex2b
 import os
+from os.path import expanduser
 
 BASE_PORT = 27870
 BASE_PORT_RPC = 7080
 BASE_PORT_GRPC = 50050
 
 BLOCK_TIMEOUT = 1000000000 #in ticks
-BLOCK_SIZE = 10000 #in transactions
+BLOCK_SIZE = 100 #in transactions
 
-BATCH_SIZE = 10000
+BATCH_SIZE = 1000
 
-BACKOFF_AMOUNT = 5
+BACKOFF_AMOUNT = 10
 
 LOOPING_CALL_TIME = 0.3
 
@@ -35,7 +36,7 @@ COINBASE = createtxns2.genesis_txn_list_batch()
 
 #read 10000 test transactions from file
 fileDir = os.path.dirname(os.path.realpath('__file__'))
-f = open('/home/pigu/belcoin/test/txns_2.txt', 'r')
+f = open(expanduser('~/belcoin/test/txns_2.txt'), 'r')
 content = f.readlines()
 f.close()
 content = [Transaction.unserialize(SerializationBuffer(hex2b(x.strip())))

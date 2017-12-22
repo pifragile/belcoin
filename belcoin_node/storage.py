@@ -391,7 +391,8 @@ class Storage(SyncObj):
                     if self.missed_counter > BACKOFF_AMOUNT:
                         self.missed_counter = 0
                         self.find_missing_transactions(self.current_block)
-                    return
+                    else:
+                        self.processing = False
                 else:
                     self.process_block(self.current_block)
 
