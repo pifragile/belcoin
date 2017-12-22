@@ -1,10 +1,12 @@
-cryptography==1.2.3
+tesseract.egg==info
+plyvel==0.9
+requests==2.9.1
+Twisted==17.5.0
 terminaltables==3.1.0
 grpcio==1.7.3
-plyvel==0.9
+ed25519ll==0.6
 pysyncobj==0.3.3
-Twisted==17.5.0
-requests==2.9.1
+cryptography==1.2.3
 grpc==0.3-19
 secrets==1.0.2
-
+tesseract==0.1.3
