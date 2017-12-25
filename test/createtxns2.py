@@ -129,11 +129,11 @@ def genesis_txn_list_batch():
 
 #write transacions into file
 
-f = open('txns_2.txt','w+')
-txns = [b2hex(t.serialize().get_bytes()) for t in generate_txns_batch_ll()]
-for t in txns:
-    f.write("%s\n" % t)
-f.close()
+# f = open('txns_2.txt','w+')
+# txns = [b2hex(t.serialize().get_bytes()) for t in generate_txns_batch_ll()]
+# for t in txns:
+#     f.write("%s\n" % t)
+# f.close()
 
 
     # f = open('genesis_1.txt','w')
