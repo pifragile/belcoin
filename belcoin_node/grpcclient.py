@@ -12,7 +12,9 @@ from test import createtxns2
 channel = grpc.insecure_channel('localhost:' + str(BASE_PORT_GRPC))
 stub = node_interface_pb2_grpc.NodeInterfaceStub(channel)
 
-
+"""
+This simple GRPC client was only used for testing purposes
+"""
 
 # for txn in createtxns2.generate_txns():
 #     req = SendTXRequest()
