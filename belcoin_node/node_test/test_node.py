@@ -13,8 +13,9 @@ from belcoin_node.util import PRIVS, HASHLOCKS, PREIMAGES
 from belcoin_node.config import TIME_MULTIPLIER, COINBASE
 from belcoin_node.txnwrapper import TxnWrapper
 from belcoin_node.util import PUBS
-from tesseract.crypto import sign, sha256d
+from tesseract.crypto import sha256d
 from tesseract.transaction import Input, Output, Transaction
+from belcoin_node.crypto.crypto import sign
 
 SO = sys.stdout
 i = 0
@@ -24,7 +25,7 @@ class Test_test(TestCase):
 
     """
     For the tests to run, COINBASE has to be set to [createtxns.genesis_txn()]
-    in the belcoin_node.config file
+    in the belcoin_node.config file and VERBOSE hast to be set to true as well
     """
 
     def get_time(self):
