@@ -35,13 +35,13 @@ ADD_NETWORK_DELAY = True
 NETWORK_DELAY_MIN = 0.01
 NETWORK_DELAY_MAX = 0.05
 
-VERBOSE = True
-VERBOSE_FAILURE = True
+VERBOSE = False
+VERBOSE_FAILURE = False
 
 #Coinbase is list of coinbase txns
 #COINBASE = [wallet_genesis]
-#COINBASE = createtxns2.genesis_txn_list_batch()
-COINBASE = [createtxns.genesis_txn()]
+COINBASE = createtxns2.genesis_txn_list_batch()
+# COINBASE = [createtxns.genesis_txn()]
 
 
 #read 10000 test transactions from file

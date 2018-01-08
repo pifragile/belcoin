@@ -46,12 +46,13 @@ for i in range(0, num_nodes):
 
     peers_str = ",".join(peers)
     peers_rpc_str = ",".join(peers_rpc)
-    print(peers_str)
+    #print(peers_str)
     command = 'python belcoin_node/node.py {} {} {} {} {} {}'.format(i,
                                                             BASE_PORT_RPC+i,
                                                             peers_rpc_str,
                                                             addrs[i],
                                                             peers_str,
-                                                            BASE_PORT_GRPC+i)
+                                                            BASE_PORT_GRPC+i) +\
+                                                            " &>> output/0.txt"
     print(command)
-    os.system("gnome-terminal -e 'bash -l -c \""+command+"; exec bash\"'")
+    # os.system("gnome-terminal -e 'bash -l -c \""+command+"; exec bash\"'")
