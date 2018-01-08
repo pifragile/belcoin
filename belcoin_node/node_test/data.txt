@@ -1,0 +1,179 @@
+pigu@pigu-tesseract:~/belcoin/belcoin_node/node_test$ ./test_network_script5.sh
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 9.294250011444092
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 9.746991634368896
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 9.766525268554688
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 10.400907278060913
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 10.46959400177002
+^C
+pigu@pigu-tesseract:~/belcoin/belcoin_node/node_test$ ./test_network_script5.sh
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 9.403925657272339
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 9.633086919784546
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 9.665800333023071
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 9.675646543502808
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 9.940327167510986
+^C
+pigu@pigu-tesseract:~/belcoin/belcoin_node/node_test$ ./test_network_script5.sh
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 9.950328350067139
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 9.617036581039429
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 10.048292636871338
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 10.377407312393188
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 9.974335432052612
+^C
+pigu@pigu-tesseract:~/belcoin/belcoin_node/node_test$ ./test_network_script4.sh
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 7.914555072784424
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 7.922662019729614
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 7.927649021148682
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 7.873260736465454
+^C
+pigu@pigu-tesseract:~/belcoin/belcoin_node/node_test$ ./test_network_script4.sh
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 7.980012655258179
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 7.979699611663818
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 7.998568534851074
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 7.948709964752197
+^C
+pigu@pigu-tesseract:~/belcoin/belcoin_node/node_test$ ./test_network_script4.sh
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 7.757902383804321
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 7.924790382385254
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 7.8099071979522705
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 8.00684642791748
+^C
+pigu@pigu-tesseract:~/belcoin/belcoin_node/node_test$ python ../../test_network.py 6
+python belcoin_node/node.py 0 7080 http://127.0.0.1:7081,http://127.0.0.1:7082,http://127.0.0.1:7083,http://127.0.0.1:7084,http://127.0.0.1:7085 localhost:27870 localhost:27871,localhost:27872,localhost:27873,localhost:27874,localhost:27875 50050 &>> output/0.txt
+python belcoin_node/node.py 1 7081 http://127.0.0.1:7080,http://127.0.0.1:7082,http://127.0.0.1:7083,http://127.0.0.1:7084,http://127.0.0.1:7085 localhost:27871 localhost:27870,localhost:27872,localhost:27873,localhost:27874,localhost:27875 50051 &>> output/0.txt
+python belcoin_node/node.py 2 7082 http://127.0.0.1:7080,http://127.0.0.1:7081,http://127.0.0.1:7083,http://127.0.0.1:7084,http://127.0.0.1:7085 localhost:27872 localhost:27870,localhost:27871,localhost:27873,localhost:27874,localhost:27875 50052 &>> output/0.txt
+python belcoin_node/node.py 3 7083 http://127.0.0.1:7080,http://127.0.0.1:7081,http://127.0.0.1:7082,http://127.0.0.1:7084,http://127.0.0.1:7085 localhost:27873 localhost:27870,localhost:27871,localhost:27872,localhost:27874,localhost:27875 50053 &>> output/0.txt
+python belcoin_node/node.py 4 7084 http://127.0.0.1:7080,http://127.0.0.1:7081,http://127.0.0.1:7082,http://127.0.0.1:7083,http://127.0.0.1:7085 localhost:27874 localhost:27870,localhost:27871,localhost:27872,localhost:27873,localhost:27875 50054 &>> output/0.txt
+python belcoin_node/node.py 5 7085 http://127.0.0.1:7080,http://127.0.0.1:7081,http://127.0.0.1:7082,http://127.0.0.1:7083,http://127.0.0.1:7084 localhost:27875 localhost:27870,localhost:27871,localhost:27872,localhost:27873,localhost:27874 50055 &>> output/0.txt
+pigu@pigu-tesseract:~/belcoin/belcoin_node/node_test$ python ../../test_network.py 7
+python belcoin_node/node.py 0 7080 http://127.0.0.1:7081,http://127.0.0.1:7082,http://127.0.0.1:7083,http://127.0.0.1:7084,http://127.0.0.1:7085,http://127.0.0.1:7086 localhost:27870 localhost:27871,localhost:27872,localhost:27873,localhost:27874,localhost:27875,localhost:27876 50050 &>> output/0.txt
+python belcoin_node/node.py 1 7081 http://127.0.0.1:7080,http://127.0.0.1:7082,http://127.0.0.1:7083,http://127.0.0.1:7084,http://127.0.0.1:7085,http://127.0.0.1:7086 localhost:27871 localhost:27870,localhost:27872,localhost:27873,localhost:27874,localhost:27875,localhost:27876 50051 &>> output/0.txt
+python belcoin_node/node.py 2 7082 http://127.0.0.1:7080,http://127.0.0.1:7081,http://127.0.0.1:7083,http://127.0.0.1:7084,http://127.0.0.1:7085,http://127.0.0.1:7086 localhost:27872 localhost:27870,localhost:27871,localhost:27873,localhost:27874,localhost:27875,localhost:27876 50052 &>> output/0.txt
+python belcoin_node/node.py 3 7083 http://127.0.0.1:7080,http://127.0.0.1:7081,http://127.0.0.1:7082,http://127.0.0.1:7084,http://127.0.0.1:7085,http://127.0.0.1:7086 localhost:27873 localhost:27870,localhost:27871,localhost:27872,localhost:27874,localhost:27875,localhost:27876 50053 &>> output/0.txt
+python belcoin_node/node.py 4 7084 http://127.0.0.1:7080,http://127.0.0.1:7081,http://127.0.0.1:7082,http://127.0.0.1:7083,http://127.0.0.1:7085,http://127.0.0.1:7086 localhost:27874 localhost:27870,localhost:27871,localhost:27872,localhost:27873,localhost:27875,localhost:27876 50054 &>> output/0.txt
+python belcoin_node/node.py 5 7085 http://127.0.0.1:7080,http://127.0.0.1:7081,http://127.0.0.1:7082,http://127.0.0.1:7083,http://127.0.0.1:7084,http://127.0.0.1:7086 localhost:27875 localhost:27870,localhost:27871,localhost:27872,localhost:27873,localhost:27874,localhost:27876 50055 &>> output/0.txt
+python belcoin_node/node.py 6 7086 http://127.0.0.1:7080,http://127.0.0.1:7081,http://127.0.0.1:7082,http://127.0.0.1:7083,http://127.0.0.1:7084,http://127.0.0.1:7085 localhost:27876 localhost:27870,localhost:27871,localhost:27872,localhost:27873,localhost:27874,localhost:27875 50056 &>> output/0.txt
+pigu@pigu-tesseract:~/belcoin/belcoin_node/node_test$ ./test_network_script6.sh
+python: can't open file 'belcoin_node/node.py': [Errno 2] No such file or directory
+python: can't open file 'belcoin_node/node.py': [Errno 2] No such file or directory
+python: can't open file 'belcoin_node/node.py': [Errno 2] No such file or directory
+python: can't open file 'belcoin_node/node.py': [Errno 2] No such file or directory
+python: can't open file 'belcoin_node/node.py': [Errno 2] No such file or directory
+python: can't open file 'belcoin_node/node.py': [Errno 2] No such file or directory
+^C
+pigu@pigu-tesseract:~/belcoin/belcoin_node/node_test$ ./test_network_script6.sh
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 11.471907138824463
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 11.508275747299194
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 11.299819469451904
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 11.358950138092041
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 11.91509222984314
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 11.770873069763184
+^C
+pigu@pigu-tesseract:~/belcoin/belcoin_node/node_test$ ./test_network_script6.sh
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 10.934868812561035
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 11.043397665023804
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 11.064128398895264
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 11.107726812362671
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 11.42733883857727
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 11.790565967559814
+^C
+pigu@pigu-tesseract:~/belcoin/belcoin_node/node_test$ ./test_network_script6.sh
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 11.949771404266357
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 11.983091831207275
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 12.092698812484741
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 12.10284161567688
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 12.126180410385132
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 12.442553758621216
+^C
+pigu@pigu-tesseract:~/belcoin/belcoin_node/node_test$ ./test_network_script7.sh
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 13.49929666519165
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 13.685125350952148
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 14.323652029037476
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 14.684935331344604
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 14.376101732254028
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 14.380702495574951
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 14.707622289657593
+^C
+pigu@pigu-tesseract:~/belcoin/belcoin_node/node_test$ ./test_network_script7.sh
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 11.732068300247192
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 12.196665525436401
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 12.453418970108032
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 13.051815509796143
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 12.80987811088562
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 12.93793773651123
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 13.468740463256836
+^C
+pigu@pigu-tesseract:~/belcoin/belcoin_node/node_test$ ./test_network_script7.sh
+
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 12.232076168060303
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 12.868469476699829
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 12.951883792877197
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 13.263439655303955
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 13.137089967727661
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 13.204235076904297
+txns accepted / processed : 10000 / 10000
+TIME ELAPSED: 13.378050327301025
