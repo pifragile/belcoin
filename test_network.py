@@ -52,7 +52,8 @@ for i in range(0, num_nodes):
                                                             peers_rpc_str,
                                                             addrs[i],
                                                             peers_str,
-                                                            BASE_PORT_GRPC+i) +\
-                                                            " &>> output/0.txt"
+                                                            BASE_PORT_GRPC+i)
+    #+\
+                       #                                     " &>> output/0.txt"
     print(command)
-    # os.system("gnome-terminal -e 'bash -l -c \""+command+"; exec bash\"'")
+    os.system("gnome-terminal -e 'bash -l -c \""+command+"; exec bash\"'")
