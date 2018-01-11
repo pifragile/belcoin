@@ -448,55 +448,6 @@ class Storage(SyncObj):
         :type txnid: bytes
         :type i: Int
         """
-        # tx = None
-        # rpc_peers = list(self.bcnode.rpc_peers.values())
-        # i = 0
-        # while tx is None:
-        #     # try:
-        #     #     addr = self.bcnode.rpc_peers[self._getLeader()]
-        #     # except KeyError:
-        #     addr = rpc_peers[i % len(rpc_peers)]
-        #     if VERBOSE:
-        #         print('requesting transaction {} from {}'.format(b2hex(txnid),
-        #                                                          addr))
-        #     payload = {
-        #         "method": "req_txn",
-        #         "params": [b2hex(txnid), self.addr],
-        #         "jsonrpc": "2.0",
-        #         "id": 0,
-        #     }
-        #     headers = {'content-type': 'application/json'}
-        #     response = requests.post(
-        #         addr, data=json.dumps(payload), headers=headers).json()
-        #     if response['result'] == 0:
-        #         i += 1
-        #
-        #         #check if tx is now in mempool, there can be strange race
-        #         # conditions when leader changes in a bad moment
-        #         if i % len(rpc_peers) == 0:
-        #             txn_list = [txn for txn in self.mempool if txn[0] == txnid]
-        #             if len(txn_list) > 0:
-        #                 tx = txn_list[0]
-        #         continue
-        #
-        #     tx = Transaction.unserialize(SerializationBuffer(hex2b(response['result'])))
-        #     i += 1
-        #
-        #
-        # if VERBOSE:
-        #     print('node {} received txn {}'.format(self.nid,
-        #                                            b2hex(tx.txid)))
-        #
-        # if len([txn for txn in self.mempool if txn[0] ==
-        #         tx.txid]) == 0:
-        #     self.mempool.append((tx.txid, tx))
-        #     if VERBOSE:
-        #         print('Txn {} put in mempool on node {}.'.format(b2hex(
-        #             tx.txid), self.nid))
-        # else:
-        #     if VERBOSE:
-        #         print('Txn {} already in mempool on node {}.'.format(
-        #             b2hex(tx.txid), self.nid))
 
         # check if tx is now in mempool, there can be strange race
         # conditions when leader changes in a bad moment
